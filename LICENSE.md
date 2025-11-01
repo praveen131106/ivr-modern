@@ -1,6 +1,5 @@
 MIT license
 
-Add the below content:
 
 Copyright (c) 2025 Praveen Kumar Nayak 
 
