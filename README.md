@@ -518,7 +518,7 @@ This project is developed for educational and demonstration purposes as part of 
 
 **Praveen**
 - GitHub: [praveen131106](https://github.com/praveen131106)
-- Repository: [AI-conv-train-ivr](https://github.com/praveen131106/AI-conv-train-ivr)
+- Repository: [ivr-modern](https://github.com/praveen131106/ivr-modern.git)
 
 ## 🙏 Acknowledgments
 
