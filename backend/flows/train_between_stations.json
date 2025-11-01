@@ -1,0 +1,36 @@
+{
+  "name": "Trains Between Stations",
+  "description": "Flow for finding trains between two stations",
+  "initial_state": "collect_source",
+  "states": {
+    "collect_source": {
+      "message": "Excellent! I can help you find trains between stations. To begin, please tell me your source or boarding station name.",
+      "actions": {
+        "collect_data": {
+          "field": "source_station",
+          "next_state": "collect_destination"
+        }
+      }
+    },
+    "collect_destination": {
+      "message": "Perfect! Now, please tell me your destination station name.",
+      "actions": {
+        "collect_data": {
+          "field": "destination_station",
+          "next_state": "show_trains"
+        }
+      }
+    },
+    "show_trains": {
+      "message": "",
+      "actions": {
+        "dynamic_response": {
+          "function": "trains_between_stations_response",
+          "next_state": "main_menu"
+        }
+      },
+      "is_end": false
+    }
+  }
+}
+

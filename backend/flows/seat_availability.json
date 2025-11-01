@@ -1,0 +1,50 @@
+{
+  "name": "Seat Availability Check",
+  "description": "Flow for checking seat availability",
+  "initial_state": "collect_train_info",
+  "states": {
+    "collect_train_info": {
+      "message": "Perfect! I can help you check seat availability. To get started, please enter or tell me the train number you'd like to check.",
+      "actions": {
+        "collect_data": {
+          "field": "train_number",
+          "next_state": "collect_date"
+        }
+      }
+    },
+    "collect_date": {
+      "message": "Great! Now, please enter or tell me the date of travel. You can say the date or enter it in DD-MM-YYYY format.",
+      "actions": {
+        "collect_data": {
+          "field": "travel_date",
+          "next_state": "select_class"
+        }
+      }
+    },
+    "select_class": {
+      "message": "Perfect! Now, which class would you like to check seat availability for? Press 1 for Sleeper class, Press 2 for AC 3 Tier, or Press 3 for AC 2 Tier. You can also say the class name.",
+      "keypad_map": {
+        "1": "show_availability",
+        "2": "show_availability",
+        "3": "show_availability"
+      },
+      "actions": {
+        "collect_data": {
+          "field": "class",
+          "next_state": "show_availability"
+        }
+      }
+    },
+    "show_availability": {
+      "message": "",
+      "actions": {
+        "dynamic_response": {
+          "function": "seat_availability_response",
+          "next_state": "main_menu"
+        }
+      },
+      "is_end": false
+    }
+  }
+}
+

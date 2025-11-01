@@ -1,0 +1,27 @@
+{
+  "name": "Train Status Check",
+  "description": "Flow for checking train status",
+  "initial_state": "collect_train_number",
+  "states": {
+    "collect_train_number": {
+      "message": "I can check the train status for you right away. Please enter or tell me the train number you'd like to check.",
+      "actions": {
+        "collect_data": {
+          "field": "train_number",
+          "next_state": "show_status"
+        }
+      }
+    },
+    "show_status": {
+      "message": "",
+      "actions": {
+        "dynamic_response": {
+          "function": "train_status",
+          "next_state": "main_menu"
+        }
+      },
+      "is_end": false
+    }
+  }
+}
+

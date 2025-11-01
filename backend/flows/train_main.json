@@ -1,0 +1,131 @@
+{
+  "name": "Train IVR Main Menu",
+  "description": "Main menu flow for train enquiry system",
+  "initial_state": "main_menu",
+  "states": {
+    "main_menu": {
+      "message": "Welcome! I'm your train enquiry assistant. Here are all your options: Press 1 for Booking a Train Ticket, Press 2 to Check Train Status, Press 3 for Train Schedule Information, Press 4 for Ticket Cancellation, Press 5 to Check PNR Status, Press 6 for Seat Availability, Press 7 for Fare Enquiry, Press 8 to Find Trains Between Stations, Press 0 to Repeat this Menu, Press Star to Return to Main Menu, or Press 9 to Talk to Customer Support Agent. You can also speak your request anytime. How can I help you today?",
+      "options": {
+        "1": "Book Train Ticket",
+        "2": "Check Train Status",
+        "3": "Train Schedule",
+        "4": "Ticket Cancellation",
+        "5": "PNR Status Check",
+        "6": "Seat Availability",
+        "7": "Fare Enquiry",
+        "8": "Trains Between Stations",
+        "0": "Repeat Menu",
+        "*": "Return to Main Menu",
+        "#": "Confirm/Submit",
+        "9": "Talk to Customer Support Agent"
+      },
+      "keypad_map": {
+        "1": "flow:booking",
+        "2": "flow:status",
+        "3": "flow:schedule",
+        "4": "flow:cancellation",
+        "5": "flow:pnr_status",
+        "6": "flow:seat_availability",
+        "7": "flow:fare_enquiry",
+        "8": "flow:train_between_stations",
+        "0": "repeat_menu",
+        "*": "main_menu",
+        "#": "confirm_action",
+        "9": "flow:agent"
+      },
+      "speech_patterns": {
+        "book": "flow:booking",
+        "booking": "flow:booking",
+        "ticket": "flow:booking",
+        "buy": "flow:booking",
+        "status": "flow:status",
+        "check": "flow:status",
+        "running": "flow:status",
+        "schedule": "flow:schedule",
+        "time": "flow:schedule",
+        "departure": "flow:schedule",
+        "arrival": "flow:schedule",
+        "cancel": "flow:cancellation",
+        "cancellation": "flow:cancellation",
+        "pnr": "flow:pnr_status",
+        "seat": "flow:seat_availability",
+        "available": "flow:seat_availability",
+        "fare": "flow:fare_enquiry",
+        "price": "flow:fare_enquiry",
+        "cost": "flow:fare_enquiry",
+        "between": "flow:train_between_stations",
+        "stations": "flow:train_between_stations",
+        "repeat": "repeat_menu",
+        "menu": "main_menu",
+        "main": "main_menu",
+        "confirm": "confirm_action",
+        "yes": "confirm_action",
+        "agent": "flow:agent",
+        "support": "flow:agent",
+        "help": "flow:agent",
+        "representative": "flow:agent"
+      },
+      "transitions": {
+        "1": "flow:booking",
+        "2": "flow:status",
+        "3": "flow:schedule",
+        "4": "flow:cancellation",
+        "5": "flow:pnr_status",
+        "6": "flow:seat_availability",
+        "7": "flow:fare_enquiry",
+        "8": "flow:train_between_stations",
+        "0": "repeat_menu",
+        "*": "main_menu",
+        "#": "confirm_action",
+        "9": "flow:agent"
+      },
+      "keywords": {
+        "repeat": "repeat_menu",
+        "menu": "main_menu",
+        "back": "main_menu",
+        "confirm": "confirm_action"
+      }
+    },
+    "repeat_menu": {
+      "message": "Of course! Let me repeat the menu. Press 1 for Booking, 2 for Train Status, 3 for Schedule, 4 for Cancellation, 5 for PNR Status, 6 for Seat Availability, 7 for Fare Enquiry, 8 for Trains Between Stations, 0 to repeat again, Star to go back, or 9 for Support. What would you like to do?",
+      "options": {
+        "1": "Book Train Ticket",
+        "2": "Check Train Status",
+        "3": "Train Schedule",
+        "4": "Ticket Cancellation",
+        "5": "PNR Status Check",
+        "6": "Seat Availability",
+        "7": "Fare Enquiry",
+        "8": "Trains Between Stations",
+        "0": "Repeat Menu",
+        "*": "Return to Main Menu",
+        "9": "Talk to Customer Support Agent"
+      },
+      "transitions": {
+        "1": "flow:booking",
+        "2": "flow:status",
+        "3": "flow:schedule",
+        "4": "flow:cancellation",
+        "5": "flow:pnr_status",
+        "6": "flow:seat_availability",
+        "7": "flow:fare_enquiry",
+        "8": "flow:train_between_stations",
+        "0": "repeat_menu",
+        "*": "main_menu",
+        "9": "flow:agent"
+      }
+    },
+    "confirm_action": {
+      "message": "Thank you for confirming. Is there anything else I can help you with today? Press any number to continue, star to return to main menu, or 9 to speak with an agent.",
+      "transitions": {
+        "*": "main_menu",
+        "9": "flow:agent"
+      },
+      "keypad_map": {
+        "*": "main_menu",
+        "9": "flow:agent"
+      }
+    }
+  }
+}
+
