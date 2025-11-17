@@ -21,8 +21,16 @@ import json
 from datetime import datetime
 import sys
 import os
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from utils.flow_manager import FlowManager
+
+# Ensure backend/utils is always importable on Railway
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+UTILS_DIR = os.path.join(BASE_DIR, "utils")
+
+if UTILS_DIR not in sys.path:
+    sys.path.append(UTILS_DIR)
+
+from flow_manager import FlowManager
+
 
 app = FastAPI(title="Train IVR System", version="1.0.0")
 from fastapi.middleware.cors import CORSMiddleware
