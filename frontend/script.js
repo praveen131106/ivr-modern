@@ -3,7 +3,7 @@
  * Handles voice control, keypad input, and API integration
  */
 
-const API_BASE_URL = "ivr-modern-production-bcbc.up.railway.app";
+const API_BASE_URL = "https://ivr-modern-production-bcbc.up.railway.app/";
 
 // Global state
 let currentSessionId = null;
