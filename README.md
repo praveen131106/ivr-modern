@@ -21,7 +21,7 @@ A comprehensive, production-ready **Conversational IVR Modernization Framework**
 ### 🔹 Frontend – IVR Call Simulator (Netlify)
 The interactive IVR simulator interface with keypad, voice input, call history, and TTS integration:
 
-🔗 **https://691b84f178ef5d536e12ae67--moder-ivr-a.netlify.app/**
+🔗 **https://moder-ivr-a.netlify.app/**
 
 ---
 
@@ -569,6 +569,7 @@ This project is developed for educational and demonstration purposes as part of 
 **Status**: ✅ Production Ready  
 **Version**: 1.0.0  
 **Last Updated**: January 2025
+
 
 
 
