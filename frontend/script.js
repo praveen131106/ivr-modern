@@ -3,7 +3,7 @@
  * Handles voice control, keypad input, and API integration
  */
 
-const API_BASE_URL = "http://localhost:8000";
+const API_BASE_URL = "https://ivr-modern-production.up.railway.app/";
 
 // Global state
 let currentSessionId = null;
