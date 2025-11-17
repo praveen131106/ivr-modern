@@ -25,6 +25,18 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from utils.flow_manager import FlowManager
 
 app = FastAPI(title="Train IVR System", version="1.0.0")
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://691b84f178ef5d536e12ae67--moder-ivr-a.netlify.app",
+        "https://moder-ivr-a.netlify.app",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Enable CORS for frontend integration
 app.add_middleware(
