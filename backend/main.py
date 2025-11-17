@@ -38,14 +38,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Enable CORS for frontend integration
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # In production, specify exact origins
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+
 
 # In-memory session storage
 sessions: Dict[str, Dict[str, Any]] = {}
