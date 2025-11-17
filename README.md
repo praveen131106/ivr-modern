@@ -16,6 +16,30 @@ A comprehensive, production-ready **Conversational IVR Modernization Framework**
 - [Configuration](#configuration)
 - [Troubleshooting](#troubleshooting)
 
+## 🌐 Live Deployment Links
+
+### 🔹 Frontend – IVR Call Simulator (Netlify)
+The interactive IVR simulator interface with keypad, voice input, call history, and TTS integration:
+
+🔗 **https://691b84f178ef5d536e12ae67--moder-ivr-a.netlify.app/**
+
+---
+
+### 🔹 Backend API – FastAPI Server (Railway)
+The production backend powering IVR sessions, NLP flow processing, and state management:
+
+🔗 **https://ivr-modern-production-bcbc.up.railway.app/**
+
+**Key Endpoints:**
+- `POST /api/ivr/start` – Start a new IVR session  
+- `POST /api/ivr/input` – Process keypad/speech input  
+- `POST /api/ivr/end` – End session and get summary  
+- `GET /api/flows` – List all IVR flows  
+- `GET /api/session/{id}` – Debug session info  
+
+---
+
+
 ## 🎯 Overview
 
 This project modernizes traditional IVR systems by implementing a conversational interface that supports both voice and keypad interactions. The system uses natural language processing to understand user intent, provides dynamic responses based on context, and offers a seamless user experience for train-related enquiries.
@@ -545,6 +569,7 @@ This project is developed for educational and demonstration purposes as part of 
 **Status**: ✅ Production Ready  
 **Version**: 1.0.0  
 **Last Updated**: January 2025
+
 
 
 
