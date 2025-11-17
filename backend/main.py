@@ -33,7 +33,6 @@ from flow_manager import FlowManager
 
 
 app = FastAPI(title="Train IVR System", version="1.0.0")
-from fastapi.middleware.cors import CORSMiddleware
 
 app.add_middleware(
     CORSMiddleware,
