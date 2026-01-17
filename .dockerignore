@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+*.db
+*.sqlite3
+*.log
+*.cache
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+
+# Local files
+.local/
+*.swp
+*.swo
+.DS_Store
