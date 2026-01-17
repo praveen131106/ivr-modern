@@ -26,11 +26,11 @@ from flow_manager import FlowManager
 
 app = FastAPI(title="Train IVR System", version="1.0.0")
 
-# ✅ UPDATED CORS SETTINGS
+# ✅ UPDATED CORS SETTINGS (IMPORTANT FIX)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://691b84f178ef5d536e12ae67--moder-ivr-a.netlify.app",
+        "https://agent-696b2e3331a00135477f9a30--moder-ivr-a.netlify.app",
         "https://moder-ivr-a.netlify.app",
         "http://localhost:3000",
         "http://127.0.0.1:3000"
