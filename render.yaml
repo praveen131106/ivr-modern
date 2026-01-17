@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: ivr-modern-backend
+    env: docker
+    branch: main
+    repo: https://github.com/praveen131106/ivr-modern
+    autoDeploy: true
+    plan: starter
+    buildCommand: ""
+    startCommand: ""
+    healthCheckPath: /  
+    envVars: []
