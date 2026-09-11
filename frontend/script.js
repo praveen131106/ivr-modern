@@ -103,6 +103,8 @@ async function requestMicPermission() {
     }
 }
 
+let lastAssistantUtterance = "";
+
 // Initialize Continuous Speech Recognition
 function initSpeechRecognition() {
     if (!("webkitSpeechRecognition" in window) && !("SpeechRecognition" in window)) {
@@ -129,27 +131,38 @@ function initSpeechRecognition() {
 
     recognition.onresult = async (event) => {
         const lastResultIndex = event.results.length - 1;
-        const transcript = event.results[lastResultIndex][0].transcript.trim();
-        if (transcript) {
-            console.log("Speech recognized:", transcript);
+        const rawTranscript = event.results[lastResultIndex][0].transcript.trim();
+        if (!rawTranscript) return;
 
-            // BARGE-IN: Instantly cut off assistant voice playback when user speaks
-            if ("speechSynthesis" in window && isSpeaking) {
-                console.log("Assistant voice interrupted by user barge-in speech.");
-                window.speechSynthesis.cancel();
-                isSpeaking = false;
+        const transcriptLower = rawTranscript.toLowerCase();
+
+        // 1. SELF-ECHO CHECK: Ignore input if mic hears assistant's own speaker output
+        if (lastAssistantUtterance && lastAssistantUtterance.length > 5) {
+            if (lastAssistantUtterance.includes(transcriptLower) || transcriptLower.includes(lastAssistantUtterance.slice(0, 15))) {
+                console.log("Ignored self-echo of assistant speech:", rawTranscript);
+                return;
             }
-
-            if (userTextInput) userTextInput.value = transcript;
-
-            // Auto-start call session if not already active
-            if (!currentSessionId) {
-                await startCall();
-            }
-
-            addToOutput(transcript, "user");
-            sendInput(transcript);
         }
+
+        console.log("User Speech Recognized:", rawTranscript);
+
+        // 2. BARGE-IN: Real user speech mid-sentence cancels assistant TTS voice
+        if ("speechSynthesis" in window && isSpeaking) {
+            console.log("Assistant voice interrupted by real user barge-in speech.");
+            window.speechSynthesis.cancel();
+            isSpeaking = false;
+            lastAssistantUtterance = "";
+        }
+
+        if (userTextInput) userTextInput.value = rawTranscript;
+
+        // Auto-start call session if not already active
+        if (!currentSessionId) {
+            await startCall();
+        }
+
+        addToOutput(rawTranscript, "user");
+        sendInput(rawTranscript);
     };
 
     recognition.onerror = (event) => {
@@ -161,16 +174,14 @@ function initSpeechRecognition() {
                 micStatus.textContent = "⚠️ Mic Blocked. Allow in URL bar.";
                 micStatus.classList.remove("active");
             }
-        } else if (event.error !== "aborted" && event.error !== "no-speech") {
-            if (micStatus) micStatus.textContent = `Voice note: ${event.error}`;
         }
     };
 
     recognition.onend = () => {
         isListening = false;
-        // Auto-resume continuous listening whenever mic permission is granted
-        if (micPermissionGranted) {
-            setTimeout(() => startContinuousListening(), 300);
+        // Auto-resume continuous listening whenever call is active & mic permission granted
+        if (micPermissionGranted && currentSessionId) {
+            setTimeout(() => startContinuousListening(), 200);
         } else {
             if (micStatus) {
                 micStatus.textContent = micPermissionGranted ? "🎤 Voice Active — Listening..." : "Mic Inactive";
@@ -214,14 +225,22 @@ function speakText(text) {
         window.speechSynthesis.cancel();
     }
 
-    const cleanText = text.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}]/gu, '');
+    const cleanText = text.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}]/gu, '').trim();
+    lastAssistantUtterance = cleanText.toLowerCase();
+
     const utterance = new SpeechSynthesisUtterance(cleanText);
     utterance.rate = 0.95;
     utterance.pitch = 1.0;
 
     utterance.onstart = () => { isSpeaking = true; };
-    utterance.onend = () => { isSpeaking = false; };
-    utterance.onerror = () => { isSpeaking = false; };
+    utterance.onend = () => {
+        isSpeaking = false;
+        setTimeout(() => { lastAssistantUtterance = ""; }, 600);
+    };
+    utterance.onerror = () => {
+        isSpeaking = false;
+        lastAssistantUtterance = "";
+    };
 
     window.speechSynthesis.speak(utterance);
 }

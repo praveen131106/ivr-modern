@@ -282,11 +282,26 @@ class AdvancedNLP:
         
         return None
     
+    def normalize_spoken_numbers(self, text: str) -> str:
+        """Convert spoken number words ('one two seven one eight') and space-separated digit sequences ('1 2 7 1 8') into continuous digits ('12718')"""
+        if not text:
+            return ""
+        words = text.lower().split()
+        num_word_map = {
+            "zero": "0", "one": "1", "two": "2", "three": "3", "four": "4",
+            "five": "5", "six": "6", "seven": "7", "eight": "8", "nine": "9", "oh": "0"
+        }
+        normalized_words = [num_word_map.get(w, w) for w in words]
+        normalized_text = " ".join(normalized_words)
+        collapsed = re.sub(r'\b(?:\d\s+){3,9}\d\b', lambda m: m.group(0).replace(" ", ""), normalized_text)
+        return collapsed
+
     def extract_train_number(self, user_input: str) -> Optional[str]:
         """Extract train number or mapped train name from natural speech input"""
         if not user_input:
             return None
             
+        user_input = self.normalize_spoken_numbers(user_input)
         user_input_lower = user_input.lower().strip()
         
         # Exclude pure class names and keypad choices from being treated as train names
@@ -336,6 +351,7 @@ class AdvancedNLP:
         if not user_input:
             return None
             
+        user_input = self.normalize_spoken_numbers(user_input)
         numbers = re.findall(r'\b\d{10}\b', user_input)
         if numbers:
             return numbers[0]
