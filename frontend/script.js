@@ -1,6 +1,6 @@
 /**
  * Train IVR System - Frontend JavaScript Controller
- * Explicit Mic Permission Prompt, Unblock Banner Guide, Hands-Free Voice, Keypad & Direct Typing.
+ * Instant Session-Independent Voice Control (STT & TTS), Auto-Call Start, Keypad & Direct Typing.
  * Author: Praveen (Conversational IVR Modernization Framework)
  */
 
@@ -81,17 +81,23 @@ async function requestMicPermission() {
     }
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        // Permission granted! Stop the stream track so SpeechRecognition can capture audio cleanly
         stream.getTracks().forEach(track => track.stop());
         micPermissionGranted = true;
         if (micPermissionBanner) micPermissionBanner.classList.add("hidden");
+        if (micStatus) {
+            micStatus.textContent = "🎤 Voice Active — Listening...";
+            micStatus.classList.add("active");
+        }
         return true;
     } catch (err) {
         console.warn("Microphone permission notice:", err);
         micPermissionGranted = false;
         if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
             showMicUnblockGuide();
-            if (micStatus) micStatus.textContent = "⚠️ Mic Blocked in Browser Settings";
+            if (micStatus) {
+                micStatus.textContent = "⚠️ Mic Blocked in Browser Settings";
+                micStatus.classList.remove("active");
+            }
         }
         return false;
     }
@@ -113,16 +119,26 @@ function initSpeechRecognition() {
 
     recognition.onstart = () => {
         isListening = true;
+        micPermissionGranted = true;
         if (micPermissionBanner) micPermissionBanner.classList.add("hidden");
-        if (micStatus) micStatus.textContent = "🎤 Voice Active — Listening...";
+        if (micStatus) {
+            micStatus.textContent = "🎤 Voice Active — Listening...";
+            micStatus.classList.add("active");
+        }
     };
 
-    recognition.onresult = (event) => {
+    recognition.onresult = async (event) => {
         const lastResultIndex = event.results.length - 1;
         const transcript = event.results[lastResultIndex][0].transcript.trim();
         if (transcript) {
-            console.log("Hands-free speech recognized:", transcript);
+            console.log("Speech recognized:", transcript);
             if (userTextInput) userTextInput.value = transcript;
+
+            // Auto-start call session if not already active
+            if (!currentSessionId) {
+                await startCall();
+            }
+
             addToOutput(transcript, "user");
             sendInput(transcript);
         }
@@ -133,7 +149,10 @@ function initSpeechRecognition() {
         if (event.error === "not-allowed" || event.error === "service-not-allowed") {
             micPermissionGranted = false;
             showMicUnblockGuide();
-            if (micStatus) micStatus.textContent = "⚠️ Mic Blocked. Allow in URL bar.";
+            if (micStatus) {
+                micStatus.textContent = "⚠️ Mic Blocked. Allow in URL bar.";
+                micStatus.classList.remove("active");
+            }
         } else if (event.error !== "aborted" && event.error !== "no-speech") {
             if (micStatus) micStatus.textContent = `Voice note: ${event.error}`;
         }
@@ -141,10 +160,14 @@ function initSpeechRecognition() {
 
     recognition.onend = () => {
         isListening = false;
-        if (currentSessionId && !isSpeaking && micPermissionGranted) {
+        // Auto-resume continuous listening whenever mic permission is granted and TTS is not speaking
+        if (!isSpeaking && micPermissionGranted) {
             setTimeout(() => startContinuousListening(), 300);
         } else {
-            if (micStatus) micStatus.textContent = currentSessionId ? (micPermissionGranted ? "Call Active" : "⚠️ Mic Blocked") : "Mic Inactive";
+            if (micStatus) {
+                micStatus.textContent = micPermissionGranted ? "🎤 Voice Active — Listening..." : "Mic Inactive";
+                if (!micPermissionGranted) micStatus.classList.remove("active");
+            }
         }
     };
 
@@ -152,7 +175,7 @@ function initSpeechRecognition() {
 }
 
 function startContinuousListening() {
-    if (!currentSessionId || isSpeaking) return;
+    if (isSpeaking) return;
 
     if (!recognition) {
         recognition = initSpeechRecognition();
@@ -196,16 +219,12 @@ function speakText(text) {
     
     utterance.onend = () => {
         isSpeaking = false;
-        if (currentSessionId) {
-            setTimeout(() => startContinuousListening(), 400);
-        }
+        setTimeout(() => startContinuousListening(), 400);
     };
 
     utterance.onerror = () => {
         isSpeaking = false;
-        if (currentSessionId) {
-            setTimeout(() => startContinuousListening(), 400);
-        }
+        setTimeout(() => startContinuousListening(), 400);
     };
 
     window.speechSynthesis.speak(utterance);
@@ -255,7 +274,7 @@ async function startCall() {
     try {
         if (callStatus) callStatus.textContent = "Connecting...";
 
-        // Request browser microphone permission popup on user click gesture
+        // Trigger microphone permission popup if not already granted
         const micOk = await requestMicPermission();
 
         const response = await fetch(`${API_BASE_URL}/api/ivr/start`, {
@@ -272,7 +291,6 @@ async function startCall() {
         currentSessionId = data.session_id;
         callHistory = [];
         lastSummary = null;
-        if (ivrOutput) ivrOutput.innerHTML = "";
 
         // Enable UI Controls
         if (startCallBtn) startCallBtn.disabled = true;
@@ -287,9 +305,7 @@ async function startCall() {
         addToOutput(data.message, "system");
         speakText(data.message);
 
-        if (micOk) {
-            setTimeout(() => startContinuousListening(), 500);
-        }
+        startContinuousListening();
     } catch (error) {
         console.error("Error starting call:", error);
         if (callStatus) callStatus.textContent = "Call Failed";
@@ -298,7 +314,9 @@ async function startCall() {
 }
 
 async function sendInput(inputVal) {
-    if (!currentSessionId) return;
+    if (!currentSessionId) {
+        await startCall();
+    }
 
     stopContinuousListening();
     try {
@@ -334,7 +352,6 @@ async function endCall() {
     if ("speechSynthesis" in window) {
         window.speechSynthesis.cancel();
     }
-    stopContinuousListening();
 
     try {
         const response = await fetch(`${API_BASE_URL}/api/ivr/end`, {
@@ -357,11 +374,8 @@ async function endCall() {
 
         if (startCallBtn) startCallBtn.disabled = false;
         if (endCallBtn) endCallBtn.disabled = true;
-        if (userTextInput) userTextInput.disabled = true;
-        if (sendBtn) sendBtn.disabled = true;
         if (callStatus) callStatus.textContent = "Ready";
         if (statusDot) statusDot.classList.remove("active");
-        if (micStatus) micStatus.textContent = "Mic Inactive";
     }
 }
 
@@ -389,6 +403,21 @@ document.addEventListener("DOMContentLoaded", () => {
     checkEngineHealth();
     initSpeechRecognition();
 
+    // Enable text input and send button immediately for effortless typing
+    if (userTextInput) userTextInput.disabled = false;
+    if (sendBtn) sendBtn.disabled = false;
+
+    // Attempt starting mic listening immediately on page load / first user click
+    requestMicPermission().then((ok) => {
+        if (ok) startContinuousListening();
+    });
+
+    document.addEventListener("click", () => {
+        if (!isListening && micPermissionGranted && !isSpeaking) {
+            startContinuousListening();
+        }
+    }, { once: false });
+
     if (startCallBtn) startCallBtn.addEventListener("click", startCall);
     if (endCallBtn) endCallBtn.addEventListener("click", endCall);
     if (downloadTranscriptBtn) downloadTranscriptBtn.addEventListener("click", downloadTranscript);
@@ -396,7 +425,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (requestMicBtn) {
         requestMicBtn.addEventListener("click", async () => {
             const ok = await requestMicPermission();
-            if (ok && currentSessionId) {
+            if (ok) {
                 startContinuousListening();
             }
         });
@@ -404,12 +433,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Chat Text Form Submission
     if (chatForm) {
-        chatForm.addEventListener("submit", (e) => {
+        chatForm.addEventListener("submit", async (e) => {
             e.preventDefault();
             const text = userTextInput ? userTextInput.value.trim() : "";
-            if (text && currentSessionId) {
+            if (text) {
                 addToOutput(text, "user");
-                sendInput(text);
+                await sendInput(text);
                 userTextInput.value = "";
             }
         });
@@ -422,7 +451,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 ivrOutput.innerHTML = `
                     <div class="welcome-card">
                         <h3>Welcome to IVR Voice Simulator</h3>
-                        <p>Click <strong>"Start Call"</strong> to begin. You can speak hands-free, type in the chat bar below, or use keypad!</p>
+                        <p>Speak naturally, type in the chat bar below, or use the keypad!</p>
                     </div>`;
             }
         });
@@ -430,46 +459,45 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Keypad Click Handlers
     keypadKeys.forEach((key) => {
-        key.addEventListener("click", () => {
+        key.addEventListener("click", async () => {
             const keyValue = key.getAttribute("data-key");
-            if (keyValue && currentSessionId) {
+            if (keyValue) {
                 addToOutput(`Key pressed: ${keyValue}`, "user");
-                sendInput(keyValue);
+                await sendInput(keyValue);
             }
         });
     });
 
     // Sample Train Pills Handlers
     trainPills.forEach((pill) => {
-        pill.addEventListener("click", () => {
+        pill.addEventListener("click", async () => {
             const trainNum = pill.getAttribute("data-train");
-            if (trainNum && currentSessionId) {
+            if (trainNum) {
                 addToOutput(`Selected train ${trainNum}`, "user");
-                sendInput(trainNum);
+                await sendInput(trainNum);
             }
         });
     });
 
     // Suggestion Chips Handlers
     suggestionChips.forEach((chip) => {
-        chip.addEventListener("click", () => {
+        chip.addEventListener("click", async () => {
             const text = chip.getAttribute("data-input");
-            if (text && currentSessionId) {
+            if (text) {
                 addToOutput(text, "user");
-                sendInput(text);
+                await sendInput(text);
             }
         });
     });
 
     // Keyboard Listener
-    document.addEventListener("keydown", (e) => {
-        if (!currentSessionId) return;
+    document.addEventListener("keydown", async (e) => {
         if (["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)) return;
 
         const allowedKeys = "0123456789*#";
         if (allowedKeys.includes(e.key)) {
             addToOutput(`Key pressed: ${e.key}`, "user");
-            sendInput(e.key);
+            await sendInput(e.key);
         }
     });
 });

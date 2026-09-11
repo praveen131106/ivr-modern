@@ -352,8 +352,18 @@ html, body {
 }
 
 .mic-status-label {
-    font-size: 0.75rem;
+    font-size: 0.78rem;
+    font-weight: 500;
     color: var(--text-secondary);
+    padding: 4px 10px;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+}
+
+.mic-status-label.active {
+    color: #a7f3d0;
+    background: rgba(16, 185, 129, 0.15);
+    border: 1px solid rgba(16, 185, 129, 0.3);
 }
 
 /* Mic Permission Unblock Banner */
