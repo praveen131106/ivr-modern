@@ -86,11 +86,19 @@
                     <span id="micStatus" class="mic-status-label">Mic Inactive</span>
                 </div>
 
+                <!-- Onscreen Mic Permission Unblock Banner -->
+                <div id="micPermissionBanner" class="mic-banner hidden">
+                    <div class="banner-content">
+                        <span>⚠️ <strong>Microphone Access Needed:</strong> Click below to allow mic or unblock in address bar.</span>
+                        <button id="requestMicBtn" class="btn btn-banner">🎤 Enable Mic Access</button>
+                    </div>
+                </div>
+
                 <!-- Chat Stream Area -->
                 <div id="ivrOutput" class="chat-stream">
                     <div class="welcome-card">
                         <h3>Welcome to IVR Voice Simulator</h3>
-                        <p>Click <strong>"Start Call"</strong> to begin. Hands-free voice recognition will automatically listen as you talk!</p>
+                        <p>Click <strong>"Start Call"</strong> to begin. You can speak hands-free, type in the chat bar below, or use the keypad!</p>
                     </div>
                 </div>
 

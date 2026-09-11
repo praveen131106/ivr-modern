@@ -1,6 +1,6 @@
 /**
  * Train IVR System - Frontend JavaScript Controller
- * Explicit Browser Mic Permission Prompt, Hands-Free Voice Control (STT & TTS), Keypad & Direct Typing.
+ * Explicit Mic Permission Prompt, Unblock Banner Guide, Hands-Free Voice, Keypad & Direct Typing.
  * Author: Praveen (Conversational IVR Modernization Framework)
  */
 
@@ -36,6 +36,8 @@ const engineText = document.getElementById("engineText");
 const chatForm = document.getElementById("chatForm");
 const userTextInput = document.getElementById("userTextInput");
 const sendBtn = document.getElementById("sendBtn");
+const micPermissionBanner = document.getElementById("micPermissionBanner");
+const requestMicBtn = document.getElementById("requestMicBtn");
 
 // Check Backend Engine Status on Load
 async function checkEngineHealth() {
@@ -52,6 +54,25 @@ async function checkEngineHealth() {
     }
 }
 
+function showMicUnblockGuide() {
+    if (!ivrOutput) return;
+
+    if (micPermissionBanner) micPermissionBanner.classList.remove("hidden");
+
+    const guideElement = document.createElement("div");
+    guideElement.className = "banner-guide-card";
+    guideElement.innerHTML = `
+        <h4>🔒 How to Unblock Microphone Access in 2 Clicks:</h4>
+        <ol>
+            <li>Click the <strong>Tune / Lock icon (🔒)</strong> in your browser address bar (left of <code>127.0.0.1:8080</code>).</li>
+            <li>Toggle <strong>Microphone</strong> to <strong>Allow</strong>.</li>
+            <li>Refresh the page or click <strong>"Enable Mic Access"</strong> above.</li>
+        </ol>
+    `;
+    ivrOutput.appendChild(guideElement);
+    ivrOutput.scrollTop = ivrOutput.scrollHeight;
+}
+
 // Request Browser Microphone Access Dialog
 async function requestMicPermission() {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -63,13 +84,14 @@ async function requestMicPermission() {
         // Permission granted! Stop the stream track so SpeechRecognition can capture audio cleanly
         stream.getTracks().forEach(track => track.stop());
         micPermissionGranted = true;
+        if (micPermissionBanner) micPermissionBanner.classList.add("hidden");
         return true;
     } catch (err) {
         console.warn("Microphone permission notice:", err);
         micPermissionGranted = false;
         if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
-            addToOutput("Microphone access was denied. Please click the Lock icon in your browser address bar and set Microphone to 'Allow'.", "system");
-            if (micStatus) micStatus.textContent = "⚠️ Mic Blocked in Browser";
+            showMicUnblockGuide();
+            if (micStatus) micStatus.textContent = "⚠️ Mic Blocked in Browser Settings";
         }
         return false;
     }
@@ -91,6 +113,7 @@ function initSpeechRecognition() {
 
     recognition.onstart = () => {
         isListening = true;
+        if (micPermissionBanner) micPermissionBanner.classList.add("hidden");
         if (micStatus) micStatus.textContent = "🎤 Voice Active — Listening...";
     };
 
@@ -109,6 +132,7 @@ function initSpeechRecognition() {
         console.warn("Speech recognition notice:", event.error);
         if (event.error === "not-allowed" || event.error === "service-not-allowed") {
             micPermissionGranted = false;
+            showMicUnblockGuide();
             if (micStatus) micStatus.textContent = "⚠️ Mic Blocked. Allow in URL bar.";
         } else if (event.error !== "aborted" && event.error !== "no-speech") {
             if (micStatus) micStatus.textContent = `Voice note: ${event.error}`;
@@ -369,6 +393,15 @@ document.addEventListener("DOMContentLoaded", () => {
     if (endCallBtn) endCallBtn.addEventListener("click", endCall);
     if (downloadTranscriptBtn) downloadTranscriptBtn.addEventListener("click", downloadTranscript);
 
+    if (requestMicBtn) {
+        requestMicBtn.addEventListener("click", async () => {
+            const ok = await requestMicPermission();
+            if (ok && currentSessionId) {
+                startContinuousListening();
+            }
+        });
+    }
+
     // Chat Text Form Submission
     if (chatForm) {
         chatForm.addEventListener("submit", (e) => {
@@ -389,7 +422,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 ivrOutput.innerHTML = `
                     <div class="welcome-card">
                         <h3>Welcome to IVR Voice Simulator</h3>
-                        <p>Click <strong>"Start Call"</strong> to begin. Browser will prompt to allow microphone access automatically!</p>
+                        <p>Click <strong>"Start Call"</strong> to begin. You can speak hands-free, type in the chat bar below, or use keypad!</p>
                     </div>`;
             }
         });
