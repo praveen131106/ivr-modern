@@ -191,23 +191,20 @@ async def process_input(request: IVRInputRequest):
 
     if next_state.startswith("flow:"):
         target_flow_name = next_state.split(":")[1]
-        target_flow = flow_manager.get_flow(target_flow_name)
-        if target_flow:
-            session["current_flow"] = target_flow_name
-            initial_state = target_flow.get("initial_state", "main_menu")
-            session["current_state"] = initial_state
-            state_data = target_flow.get("states", {}).get(initial_state, {})
-            if not response_message:
-                response_message = state_data.get("message", f"Welcome to {target_flow_name} service.")
-            options = state_data.get("options", {})
-            is_end = state_data.get("is_end", False)
-            next_state = initial_state
-        else:
-            session["current_flow"] = "train_main"
-            session["current_state"] = "main_menu"
-            if not response_message:
-                response_message = "Requested flow not found. Returning to main menu."
-            next_state = "main_menu"
+        existing_msg = response_message
+        
+        next_state, sub_msg, sub_opts, sub_end = flow_manager.handle_subflow_transition(
+            target_flow_name,
+            session,
+            user_input
+        )
+        if existing_msg and existing_msg.strip():
+            response_message = existing_msg
+        elif sub_msg:
+            response_message = sub_msg
+            
+        options = sub_opts
+        is_end = sub_end
     else:
         session["current_state"] = next_state
 

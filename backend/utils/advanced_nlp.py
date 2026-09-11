@@ -248,8 +248,13 @@ class AdvancedNLP:
     
     def extract_class_from_speech(self, user_input: str) -> Optional[str]:
         """Extract train class from speech"""
-        user_input_lower = user_input.lower()
-        
+        if not user_input:
+            return None
+            
+        user_input_lower = user_input.lower().strip()
+        if user_input_lower in ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "*", "#"]:
+            return None
+            
         for keyword, class_name in self.class_mappings.items():
             if keyword in user_input_lower:
                 return class_name
@@ -269,6 +274,10 @@ class AdvancedNLP:
             return None
             
         user_input_lower = user_input.lower().strip()
+        
+        # Exclude pure class names and keypad choices from being treated as train names
+        if user_input_lower in ["ac", "sleeper", "tatkal", "ac 3 tier", "ac 2 tier", "first ac", "first class", "1", "2", "3", "4"]:
+            return None
         
         # 1. Check for 5-digit or 4-6 digit train numbers
         numbers = re.findall(r'\b\d{5}\b', user_input)
@@ -299,9 +308,12 @@ class AdvancedNLP:
             if name in user_input_lower:
                 return num
                 
-        # 3. Fallback: If user provides any spoken train name (e.g. "Visakha Express"), return formatted train name
-        if len(user_input_lower) >= 3:
-            return user_input.strip().title()
+        # 3. Fallback: If user input mentions explicit train descriptors (e.g. "Visakha Express", "Chennai Mail")
+        train_keywords = ["express", "superfast", "mail", "passenger", "local", "vande bharat", "shatabdi", "rajdhani"]
+        if any(kw in user_input_lower for kw in train_keywords):
+            cleaned_input = re.sub(r'\b(book|booking|ticket|tickets|for|a|an|the|check|status|in|class|on)\b', '', user_input_lower, flags=re.IGNORECASE).strip()
+            if len(cleaned_input) >= 3:
+                return cleaned_input.title()
             
         return None
     
@@ -318,10 +330,6 @@ class AdvancedNLP:
             numbers = re.findall(r'\d+', user_input)
             if numbers:
                 return numbers[0]
-                
-        # Fallback to returning trimmed input
-        if len(user_input.strip()) >= 3:
-            return user_input.strip()
         
         return None
     

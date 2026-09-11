@@ -70,6 +70,112 @@ class FlowManager:
         """Get a flow by name"""
         return self.flows_cache.get(flow_name, {})
     
+    def handle_subflow_transition(
+        self,
+        target_flow_name: str,
+        session: Dict[str, Any],
+        user_input: str
+    ) -> Tuple[str, str, Optional[Dict[str, str]], bool]:
+        """Perform intelligent slot filling and instant resolution when entering subflows"""
+        target_flow = self.get_flow(target_flow_name)
+        if not target_flow:
+            session["current_flow"] = "train_main"
+            session["current_state"] = "main_menu"
+            main_flow = self.get_flow("train_main")
+            options = main_flow.get("states", {}).get("main_menu", {}).get("options", {})
+            return ("main_menu", "Requested flow not found. Returning to main menu.", options, False)
+
+        initial_state = target_flow.get("initial_state", "main_menu")
+        session["current_flow"] = target_flow_name
+        session["current_state"] = initial_state
+        
+        # 1. Slot extraction & instant confirmation for booking flow
+        if target_flow_name == "booking":
+            cls = advanced_nlp.extract_class_from_speech(user_input)
+            train = advanced_nlp.extract_train_number(user_input)
+            
+            if cls:
+                session["data"]["train_class"] = cls
+            if train:
+                session["data"]["train_number"] = train
+                
+            # If both class and train number/name are present, confirm booking instantly!
+            if session["data"].get("train_class") and session["data"].get("train_number"):
+                msg = self._generate_dynamic_response("booking_confirmation", session, user_input)
+                session["current_flow"] = "train_main"
+                session["current_state"] = "main_menu"
+                main_flow = self.get_flow("train_main")
+                options = main_flow.get("states", {}).get("main_menu", {}).get("options", {})
+                return ("main_menu", msg, options, False)
+                
+            # If only class is present, prompt for train number
+            elif session["data"].get("train_class"):
+                session["current_state"] = "collect_train_number"
+                msg = f"Perfect! I've selected {session['data']['train_class']} class. Now, please enter or tell me the train number or train name you'd like to book."
+                return ("collect_train_number", msg, {}, False)
+                
+            # If only train is present, prompt for class
+            elif session["data"].get("train_number"):
+                session["current_state"] = "select_class"
+                msg = f"Great! I'd be happy to help you book a ticket for {session['data']['train_number']}. Which class would you like? Press 1 for Sleeper, Press 2 for AC 3 Tier, or Press 3 for Tatkal."
+                options = target_flow.get("states", {}).get("select_class", {}).get("options", {})
+                return ("select_class", msg, options, False)
+
+        # 2. Slot extraction for status check
+        elif target_flow_name == "status":
+            train = advanced_nlp.extract_train_number(user_input)
+            if train:
+                session["data"]["train_number"] = train
+                msg = self._generate_dynamic_response("train_status", session, user_input)
+                session["current_flow"] = "train_main"
+                session["current_state"] = "main_menu"
+                main_flow = self.get_flow("train_main")
+                options = main_flow.get("states", {}).get("main_menu", {}).get("options", {})
+                return ("main_menu", msg, options, False)
+
+        # 3. Slot extraction for schedule check
+        elif target_flow_name == "schedule":
+            train = advanced_nlp.extract_train_number(user_input)
+            if train:
+                session["data"]["train_number"] = train
+                msg = self._generate_dynamic_response("train_schedule", session, user_input)
+                session["current_flow"] = "train_main"
+                session["current_state"] = "main_menu"
+                main_flow = self.get_flow("train_main")
+                options = main_flow.get("states", {}).get("main_menu", {}).get("options", {})
+                return ("main_menu", msg, options, False)
+
+        # 4. Slot extraction for PNR status
+        elif target_flow_name == "pnr_status":
+            pnr = advanced_nlp.extract_pnr(user_input)
+            if pnr and pnr.isdigit() and len(pnr) == 10:
+                session["data"]["pnr"] = pnr
+                msg = self._generate_dynamic_response("pnr_status_response", session, user_input)
+                session["current_flow"] = "train_main"
+                session["current_state"] = "main_menu"
+                main_flow = self.get_flow("train_main")
+                options = main_flow.get("states", {}).get("main_menu", {}).get("options", {})
+                return ("main_menu", msg, options, False)
+
+        # 5. Slot extraction for cancellation
+        elif target_flow_name == "cancellation":
+            pnr = advanced_nlp.extract_pnr(user_input)
+            if pnr and pnr.isdigit() and len(pnr) == 10:
+                session["data"]["pnr"] = pnr
+                msg = self._generate_dynamic_response("cancellation_confirmation", session, user_input)
+                session["current_flow"] = "train_main"
+                session["current_state"] = "main_menu"
+                main_flow = self.get_flow("train_main")
+                options = main_flow.get("states", {}).get("main_menu", {}).get("options", {})
+                return ("main_menu", msg, options, False)
+
+        # Default fallback to flow initial state message
+        state_data = target_flow.get("states", {}).get(initial_state, {})
+        msg = state_data.get("message", f"Welcome to {target_flow_name} service.")
+        options = state_data.get("options", {})
+        is_end = state_data.get("is_end", False)
+        return (initial_state, msg, options, is_end)
+    
     def _execute_transition(
         self,
         flow: Dict[str, Any],
@@ -81,6 +187,11 @@ class FlowManager:
         if target_state.startswith("flow:"):
             return (target_state, "", {}, False)
             
+        # Auto-resolve booking completion if both class & train number/name are present
+        if session.get("data", {}).get("train_class") and session.get("data", {}).get("train_number"):
+            if target_state in ["collect_train_number", "select_class", "confirm_booking"]:
+                target_state = "confirm_booking"
+
         states = flow.get("states", {})
         if target_state not in states:
             return ("flow:train_main", "Returning to main menu.", {}, False)
