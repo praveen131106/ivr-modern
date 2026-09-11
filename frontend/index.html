@@ -3,106 +3,118 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Train IVR Call Simulator</title>
+    <title>Train IVR Modernization Framework — AI Voice Simulator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>🚂 Train Enquiry IVR System</h1>
-            <p class="subtitle">Conversational IVR Modernization Framework</p>
+    <div class="app-viewport">
+        <!-- Top App Header -->
+        <header class="app-header">
+            <div class="brand">
+                <span class="brand-icon">🚂</span>
+                <div>
+                    <h1>Conversational IVR System</h1>
+                    <p class="brand-subtitle">Train Enquiry Modernization Framework</p>
+                </div>
+            </div>
+            <div class="engine-badge" id="engineBadge">
+                <span class="pulse-dot"></span>
+                <span id="engineText">Engine: Local NLP</span>
+            </div>
         </header>
 
-        <div class="ivr-interface">
-            <!-- Call Controls -->
-            <div class="call-controls">
-                <button id="startCall" class="btn btn-start">
-                    📞 Start Call
-                </button>
-                <button id="endCall" class="btn btn-end" disabled>
-                    📴 End Call
-                </button>
-                <button id="micButton" class="btn btn-mic" disabled>
-                    🎤 Speak
-                </button>
-                <span id="callTimer" class="timer">00:00</span>
-            </div>
-
-            <!-- Phone Display -->
-            <div class="phone-display">
-                <div id="phoneScreen" class="screen">
+        <!-- Main Viewport Split Grid -->
+        <main class="main-grid">
+            <!-- Left Column: Dialer & Keypad Panel -->
+            <section class="panel dialer-panel">
+                <!-- Call Status & Timer Bar -->
+                <div class="status-card">
                     <div class="status-indicator">
-                        <span id="callStatus">Ready</span>
-                        <span id="micStatus" class="mic-indicator"></span>
+                        <span class="status-dot" id="statusDot"></span>
+                        <span id="callStatus" class="status-text">Ready</span>
                     </div>
-                    <div id="ivrOutput" class="output">
-                        <p class="welcome-text">Click "Start Call" to begin your train enquiry.</p>
-                    </div>
+                    <div id="callTimer" class="timer-display">00:00</div>
                 </div>
-            </div>
 
-            <!-- Keypad -->
-            <div class="keypad-container">
-                <div class="keypad">
-                    <button class="key" data-key="1">
-                        <span class="key-number">1</span>
+                <!-- Call Control Actions -->
+                <div class="control-actions">
+                    <button id="startCall" class="btn btn-start">
+                        <span class="btn-icon">📞</span> Start Call
                     </button>
-                    <button class="key" data-key="2">
-                        <span class="key-number">2</span>
-                        <span class="key-letters">ABC</span>
+                    <button id="endCall" class="btn btn-end" disabled>
+                        <span class="btn-icon">📴</span> End Call
                     </button>
-                    <button class="key" data-key="3">
-                        <span class="key-number">3</span>
-                        <span class="key-letters">DEF</span>
-                    </button>
-                    <button class="key" data-key="4">
-                        <span class="key-number">4</span>
-                        <span class="key-letters">GHI</span>
-                    </button>
-                    <button class="key" data-key="5">
-                        <span class="key-number">5</span>
-                        <span class="key-letters">JKL</span>
-                    </button>
-                    <button class="key" data-key="6">
-                        <span class="key-number">6</span>
-                        <span class="key-letters">MNO</span>
-                    </button>
-                    <button class="key" data-key="7">
-                        <span class="key-number">7</span>
-                        <span class="key-letters">PQRS</span>
-                    </button>
-                    <button class="key" data-key="8">
-                        <span class="key-number">8</span>
-                        <span class="key-letters">TUV</span>
-                    </button>
-                    <button class="key" data-key="9">
-                        <span class="key-number">9</span>
-                        <span class="key-letters">WXYZ</span>
-                    </button>
-                    <button class="key" data-key="*">
-                        <span class="key-number">*</span>
-                    </button>
-                    <button class="key" data-key="0">
-                        <span class="key-number">0</span>
-                    </button>
-                    <button class="key" data-key="#">
-                        <span class="key-number">#</span>
+                    <button id="micButton" class="btn btn-mic" disabled>
+                        <span class="btn-icon">🎤</span> Speak
                     </button>
                 </div>
-            </div>
 
-            <!-- Call History -->
-            <div class="history-container">
-                <h3>Call History</h3>
-                <div id="callHistory" class="history-list"></div>
-                <button id="clearHistory" class="btn btn-clear">Clear History</button>
-                <button id="downloadTranscript" class="btn btn-download" disabled>Download Transcript</button>
-            </div>
-        </div>
+                <!-- DTMF Keypad Grid -->
+                <div class="keypad-card">
+                    <div class="keypad">
+                        <button class="key" data-key="1"><span class="num">1</span></button>
+                        <button class="key" data-key="2"><span class="num">2</span><span class="sub">ABC</span></button>
+                        <button class="key" data-key="3"><span class="num">3</span><span class="sub">DEF</span></button>
+                        <button class="key" data-key="4"><span class="num">4</span><span class="sub">GHI</span></button>
+                        <button class="key" data-key="5"><span class="num">5</span><span class="sub">JKL</span></button>
+                        <button class="key" data-key="6"><span class="num">6</span><span class="sub">MNO</span></button>
+                        <button class="key" data-key="7"><span class="num">7</span><span class="sub">PQRS</span></button>
+                        <button class="key" data-key="8"><span class="num">8</span><span class="sub">TUV</span></button>
+                        <button class="key" data-key="9"><span class="num">9</span><span class="sub">WXYZ</span></button>
+                        <button class="key" data-key="*"><span class="num">*</span></button>
+                        <button class="key" data-key="0"><span class="num">0</span></button>
+                        <button class="key" data-key="#"><span class="num">#</span></button>
+                    </div>
+                </div>
+
+                <!-- Quick Sample Train Selector -->
+                <div class="train-shortcuts-card">
+                    <span class="shortcuts-title">⚡ Quick Sample Trains:</span>
+                    <div class="train-pills">
+                        <button class="train-pill" data-train="12718">12718 Godavari Exp</button>
+                        <button class="train-pill" data-train="17018">17018 Secunderabad Exp</button>
+                        <button class="train-pill" data-train="12009">12009 Shatabdi Exp</button>
+                        <button class="train-pill" data-train="12345">12345 Rajdhani Exp</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right Column: Conversational Stream Panel -->
+            <section class="panel chat-panel">
+                <div class="chat-header">
+                    <span class="chat-title">💬 Live Call Transcript</span>
+                    <span id="micStatus" class="mic-status-label">Mic Inactive</span>
+                </div>
+
+                <!-- Chat Stream Area -->
+                <div id="ivrOutput" class="chat-stream">
+                    <div class="welcome-card">
+                        <h3>Welcome to IVR Voice Simulator</h3>
+                        <p>Click <strong>"Start Call"</strong> to begin. Speak naturally or use the keypad to navigate train enquiries.</p>
+                    </div>
+                </div>
+
+                <!-- Quick Suggestion Chips -->
+                <div class="suggestion-chips">
+                    <button class="chip" data-input="Book a ticket">🎟️ Book Ticket</button>
+                    <button class="chip" data-input="Check train status">📍 Train Status</button>
+                    <button class="chip" data-input="Check PNR status">🔍 PNR Status</button>
+                    <button class="chip" data-input="Fare enquiry">💰 Fare Enquiry</button>
+                    <button class="chip" data-input="Talk to agent">🎧 Support Agent</button>
+                </div>
+
+                <!-- Panel Footer Actions -->
+                <div class="chat-footer">
+                    <button id="clearHistory" class="btn btn-secondary">Clear History</button>
+                    <button id="downloadTranscript" class="btn btn-primary" disabled>📥 Download Transcript</button>
+                </div>
+            </section>
+        </main>
     </div>
 
-    <script src="script.js?v=20"></script>
-
+    <script src="script.js"></script>
 </body>
 </html>
-

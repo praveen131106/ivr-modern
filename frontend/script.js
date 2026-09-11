@@ -1,12 +1,12 @@
 /**
- * Train IVR System - Frontend JavaScript
- * Handles voice recognition, speech synthesis, keypad input, and API integration.
+ * Train IVR System - Frontend JavaScript Controller
+ * Handles voice control (STT & TTS), keypad input, API interaction, and Gemini AI status.
  * Author: Praveen (Conversational IVR Modernization Framework)
  */
 
 // Dynamic API URL determination (defaults to local backend if running locally)
 const isLocalhost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" || window.location.protocol === "file:";
-const API_BASE_URL = window.IVR_API_URL || (isLocalhost ? "http://localhost:8000" : "https://ivr-modern-backend1.onrender.com");
+const API_BASE_URL = window.IVR_API_URL || (isLocalhost ? "http://127.0.0.1:8000" : "https://ivr-modern-backend1.onrender.com");
 
 // State variables
 let currentSessionId = null;
@@ -24,12 +24,30 @@ const endCallBtn = document.getElementById("endCall");
 const micButton = document.getElementById("micButton");
 const callTimer = document.getElementById("callTimer");
 const callStatus = document.getElementById("callStatus");
+const statusDot = document.getElementById("statusDot");
 const micStatus = document.getElementById("micStatus");
 const ivrOutput = document.getElementById("ivrOutput");
-const callHistoryDiv = document.getElementById("callHistory");
 const clearHistoryBtn = document.getElementById("clearHistory");
 const downloadTranscriptBtn = document.getElementById("downloadTranscript");
 const keypadKeys = document.querySelectorAll(".key");
+const trainPills = document.querySelectorAll(".train-pill");
+const suggestionChips = document.querySelectorAll(".chip");
+const engineText = document.getElementById("engineText");
+
+// Check Backend Engine Status on Load
+async function checkEngineHealth() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/health`);
+        if (response.ok) {
+            const data = await response.json();
+            if (engineText) {
+                engineText.textContent = data.gemini_active ? "Engine: Gemini AI ✨" : "Engine: Local NLP ⚡";
+            }
+        }
+    } catch (e) {
+        console.log("Health check note:", e);
+    }
+}
 
 // Initialize Speech Recognition
 function initSpeechRecognition() {
@@ -47,21 +65,24 @@ function initSpeechRecognition() {
 
     recognition.onstart = () => {
         isListening = true;
-        if (micStatus) micStatus.textContent = "🎤 Listening...";
+        if (micStatus) micStatus.textContent = "🎤 Listening... Speak now!";
         if (micButton) micButton.classList.add("listening");
-        stopSpeechSynthesis();
     };
 
     recognition.onresult = (event) => {
         const transcript = event.results[0][0].transcript;
         console.log("Speech recognized:", transcript);
-        addToOutput(`You said: "${transcript}"`, "user");
+        addToOutput(transcript, "user");
         sendInput(transcript);
     };
 
     recognition.onerror = (event) => {
-        console.error("Speech recognition error:", event.error);
-        if (micStatus) micStatus.textContent = `Mic Error: ${event.error}`;
+        console.warn("Speech recognition notice:", event.error);
+        if (event.error === "no-speech") {
+            if (micStatus) micStatus.textContent = "No speech heard. Try again.";
+        } else if (event.error !== "aborted") {
+            if (micStatus) micStatus.textContent = `Mic error: ${event.error}`;
+        }
         stopListening();
     };
 
@@ -74,7 +95,7 @@ function initSpeechRecognition() {
 
 function stopListening() {
     isListening = false;
-    if (micStatus) micStatus.textContent = currentSessionId ? "Call Active" : "Ready";
+    if (micStatus) micStatus.textContent = currentSessionId ? "Call Active" : "Mic Inactive";
     if (micButton) micButton.classList.remove("listening");
 }
 
@@ -84,24 +105,30 @@ function toggleMic() {
         return;
     }
 
+    // Stop any ongoing Text-To-Speech to free up the audio device
+    stopSpeechSynthesis();
+
     if (!recognition) {
         recognition = initSpeechRecognition();
         if (!recognition) {
-            alert("Speech recognition is not supported on your browser. Please use Chrome or Edge.");
+            alert("Speech recognition is not supported on your browser. Please use Google Chrome or Microsoft Edge.");
             return;
         }
     }
 
     if (isListening) {
-        recognition.stop();
+        try { recognition.stop(); } catch (e) {}
         stopListening();
     } else {
-        stopSpeechSynthesis();
-        try {
-            recognition.start();
-        } catch (e) {
-            console.error("Failed to start recognition:", e);
-        }
+        // Small 200ms timeout ensures audio channel is clear before microphone start
+        setTimeout(() => {
+            try {
+                recognition.start();
+            } catch (e) {
+                console.error("Failed to start mic:", e);
+                stopListening();
+            }
+        }, 200);
     }
 }
 
@@ -148,35 +175,25 @@ function stopTimer() {
     if (callTimer) callTimer.textContent = "00:00";
 }
 
-// Output and History Display
+// Output and Chat Stream Display
 function addToOutput(message, type = "system") {
     if (!ivrOutput) return;
 
-    const msgElement = document.createElement("p");
-    msgElement.className = type === "user" ? "user-msg" : "system-msg";
+    // Remove welcome card on first message
+    const welcomeCard = ivrOutput.querySelector(".welcome-card");
+    if (welcomeCard) welcomeCard.remove();
+
+    const msgElement = document.createElement("div");
+    msgElement.className = `chat-msg ${type === "user" ? "user-msg" : "system-msg"}`;
     msgElement.textContent = message;
     ivrOutput.appendChild(msgElement);
     ivrOutput.scrollTop = ivrOutput.scrollHeight;
 
-    // Append to local call history tracker
     callHistory.push({
         type: type,
         message: message,
         timestamp: new Date().toLocaleTimeString()
     });
-    renderCallHistory();
-}
-
-function renderCallHistory() {
-    if (!callHistoryDiv) return;
-    callHistoryDiv.innerHTML = callHistory.map(item => `
-        <div class="history-item ${item.type}">
-            <span class="time">[${item.timestamp}]</span>
-            <span class="speaker">${item.type === 'user' ? 'You' : 'IVR'}:</span>
-            <span class="text">${item.message}</span>
-        </div>
-    `).join("");
-    callHistoryDiv.scrollTop = callHistoryDiv.scrollHeight;
 }
 
 // API Communication
@@ -205,6 +222,8 @@ async function startCall() {
         if (micButton) micButton.disabled = false;
         if (downloadTranscriptBtn) downloadTranscriptBtn.disabled = true;
         if (callStatus) callStatus.textContent = "In Call";
+        if (statusDot) statusDot.classList.add("active");
+        if (micStatus) micStatus.textContent = "Call Active";
 
         startTimer();
         addToOutput(data.message, "system");
@@ -239,7 +258,7 @@ async function sendInput(inputVal) {
         speakText(data.message);
 
         if (data.is_end) {
-            setTimeout(() => endCall(), 3000);
+            setTimeout(() => endCall(), 4000);
         }
     } catch (error) {
         console.error("Error sending input:", error);
@@ -276,6 +295,8 @@ async function endCall() {
         if (endCallBtn) endCallBtn.disabled = true;
         if (micButton) micButton.disabled = true;
         if (callStatus) callStatus.textContent = "Ready";
+        if (statusDot) statusDot.classList.remove("active");
+        if (micStatus) micStatus.textContent = "Mic Inactive";
     }
 }
 
@@ -298,8 +319,9 @@ function downloadTranscript() {
     URL.revokeObjectURL(url);
 }
 
-// Setup Event Listeners
+// Event Listeners Setup
 document.addEventListener("DOMContentLoaded", () => {
+    checkEngineHealth();
     initSpeechRecognition();
 
     if (startCallBtn) startCallBtn.addEventListener("click", startCall);
@@ -310,7 +332,13 @@ document.addEventListener("DOMContentLoaded", () => {
     if (clearHistoryBtn) {
         clearHistoryBtn.addEventListener("click", () => {
             callHistory = [];
-            renderCallHistory();
+            if (ivrOutput) {
+                ivrOutput.innerHTML = `
+                    <div class="welcome-card">
+                        <h3>Welcome to IVR Voice Simulator</h3>
+                        <p>Click <strong>"Start Call"</strong> to begin. Speak naturally or use the keypad to navigate train enquiries.</p>
+                    </div>`;
+            }
         });
     }
 
@@ -325,11 +353,31 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 
-    // Keyboard Key Listener
+    // Sample Train Pills Handlers
+    trainPills.forEach((pill) => {
+        pill.addEventListener("click", () => {
+            const trainNum = pill.getAttribute("data-train");
+            if (trainNum && currentSessionId) {
+                addToOutput(`Selected train ${trainNum}`, "user");
+                sendInput(trainNum);
+            }
+        });
+    });
+
+    // Suggestion Chips Handlers
+    suggestionChips.forEach((chip) => {
+        chip.addEventListener("click", () => {
+            const text = chip.getAttribute("data-input");
+            if (text && currentSessionId) {
+                addToOutput(text, "user");
+                sendInput(text);
+            }
+        });
+    });
+
+    // Keyboard Listener
     document.addEventListener("keydown", (e) => {
         if (!currentSessionId) return;
-        
-        // Ignore if user is typing in an input element
         if (["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)) return;
 
         const allowedKeys = "0123456789*#";

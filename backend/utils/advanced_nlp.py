@@ -1,16 +1,30 @@
 """
 Natural Language Processing Engine for Train IVR System
-Implements intelligent intent recognition, fuzzy matching, and context understanding
-using pattern-based algorithms and sequence matching techniques.
+Implements intelligent intent recognition, fuzzy matching, entity extraction,
+and optional Google Gemini AI integration.
 """
 
+import os
 import re
+import json
 from typing import Dict, Any, Tuple, Optional
 from difflib import SequenceMatcher
 
+# Optional Google Gemini AI integration
+GEMINI_CLIENT = None
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+
+if GEMINI_API_KEY:
+    try:
+        from google import genai
+        GEMINI_CLIENT = genai.Client(api_key=GEMINI_API_KEY)
+        print("Google Gemini AI SDK initialized successfully for IVR System.")
+    except Exception as e:
+        print(f"Gemini SDK initialization note: {e}")
+
 
 class AdvancedNLP:
-    """Advanced NLP engine with intent recognition and fuzzy matching"""
+    """Advanced NLP engine with pattern matching, fuzzy logic, and Gemini AI integration"""
     
     def __init__(self):
         # Greeting patterns - handled separately for natural conversation
@@ -103,6 +117,10 @@ class AdvancedNLP:
             "tatkal": "Tatkal"
         }
     
+    def is_gemini_active(self) -> bool:
+        """Check if Gemini AI client is active"""
+        return GEMINI_CLIENT is not None
+
     def similarity(self, a: str, b: str) -> float:
         """Calculate similarity between two strings"""
         return SequenceMatcher(None, a.lower(), b.lower()).ratio()
@@ -114,7 +132,6 @@ class AdvancedNLP:
         greetings = self.greeting_patterns["greetings"]
         responses = self.greeting_patterns["responses"]
         
-        # Check for greetings
         for greeting in greetings:
             if greeting in user_input_lower:
                 if "how are you" in user_input_lower or "how do you do" in user_input_lower:
@@ -122,49 +139,84 @@ class AdvancedNLP:
                 else:
                     return {"type": "greeting", "response": responses["greeting"]}
         
-        # Check for thanks
         if any(word in user_input_lower for word in ["thank", "thanks", "appreciate"]):
             return {"type": "greeting", "response": responses["thanks"]}
         
-        # Check for polite questions
         if any(word in user_input_lower for word in ["nice", "good", "great", "wonderful"]):
             return {"type": "greeting", "response": responses["polite"]}
         
         return None
+
+    def _call_gemini_nlp(self, user_input: str, current_state: str) -> Optional[Dict[str, Any]]:
+        """Query Gemini AI model for intent & entity extraction"""
+        if not GEMINI_CLIENT:
+            return None
+        try:
+            prompt = f"""
+            You are an AI intent classifier for a Train Enquiry IVR System.
+            Classify user utterance: "{user_input}" (current state: {current_state}).
+            Valid target options:
+            - flow:booking (for booking/reserving tickets)
+            - flow:status (for train running status)
+            - flow:schedule (for train schedule/timings)
+            - flow:cancellation (for cancelling tickets/refund)
+            - flow:pnr_status (for PNR status)
+            - flow:seat_availability (for seat availability)
+            - flow:fare_enquiry (for ticket price/fare)
+            - flow:train_between_stations (for trains between stations)
+            - flow:agent (for human support)
+            - repeat_menu (for repeating options)
+            - main_menu (for returning to main menu)
+
+            Return strictly a JSON object with keys:
+            "target": string or null,
+            "confidence": float between 0.0 and 1.0,
+            "intent": string intent name or null.
+            """
+            response = GEMINI_CLIENT.models.generate_content(
+                model='gemini-2.5-flash',
+                contents=prompt
+            )
+            text = response.text.strip()
+            if text.startswith("```"):
+                text = re.sub(r"^```(?:json)?\n|\n```$", "", text, flags=re.MULTILINE)
+            data = json.loads(text)
+            if data.get("target"):
+                data["engine"] = "gemini"
+                return data
+        except Exception as e:
+            print(f"Gemini API note (falling back to local engine): {e}")
+        return None
     
     def extract_intent(self, user_input: str, current_state: str = "main_menu") -> Optional[Dict[str, Any]]:
-        """
-        Advanced intent extraction with fuzzy matching
-        
-        Returns: {"target": "flow:booking", "confidence": 0.95, "intent": "booking"}
-        """
+        """Extract intent using Gemini AI (if configured) or local pattern matcher"""
         user_input_lower = user_input.lower().strip()
         
-        # Check for greetings first
         greeting_result = self.is_greeting(user_input_lower)
         if greeting_result:
             return greeting_result
         
-        # Check for exact number matches first
         if len(user_input_lower) == 1 and user_input_lower in "0123456789*#":
-            return None  # Let keypad handler deal with it
+            return None
         
-        # Check for number words
         for word, num in self.number_words.items():
             if word in user_input_lower:
-                # Return as keypad input
                 return {"target": None, "keypad_value": num, "confidence": 1.0}
-        
+
+        # Attempt Gemini AI extraction first if active
+        gemini_result = self._call_gemini_nlp(user_input, current_state)
+        if gemini_result and gemini_result.get("confidence", 0) > 0.6:
+            return gemini_result
+
+        # Fallback to local pattern matcher
         best_match = None
         best_score = 0.0
         best_intent = None
         
-        # Score each intent pattern
         for intent_name, pattern_data in self.intent_patterns.items():
             keywords = pattern_data["keywords"]
             weight = pattern_data["weight"]
             
-            # Check exact keyword matches
             for keyword in keywords:
                 if keyword in user_input_lower:
                     score = weight * 1.0
@@ -173,7 +225,6 @@ class AdvancedNLP:
                         best_match = pattern_data["target"]
                         best_intent = intent_name
                 
-                # Check fuzzy matching for longer keywords
                 if len(keyword) > 4:
                     similarity = self.similarity(user_input_lower, keyword)
                     if similarity > 0.7:
@@ -183,31 +234,12 @@ class AdvancedNLP:
                             best_match = pattern_data["target"]
                             best_intent = intent_name
         
-        # Check for multi-word patterns
-        for intent_name, pattern_data in self.intent_patterns.items():
-            # Look for compound patterns like "book ticket", "check status"
-            keywords = pattern_data["keywords"]
-            for keyword in keywords:
-                # Extract surrounding context
-                if keyword in user_input_lower:
-                    context_words = user_input_lower.split()
-                    keyword_index = context_words.index(keyword) if keyword in context_words else -1
-                    
-                    if keyword_index >= 0:
-                        # Check nearby words for context
-                        nearby = " ".join(context_words[max(0, keyword_index-2):keyword_index+3])
-                        enhanced_score = pattern_data["weight"] * 1.2
-                        
-                        if enhanced_score > best_score:
-                            best_score = enhanced_score
-                            best_match = pattern_data["target"]
-                            best_intent = intent_name
-        
         if best_match and best_score > 0.6:
             return {
                 "target": best_match,
                 "confidence": min(best_score, 1.0),
-                "intent": best_intent
+                "intent": best_intent,
+                "engine": "local"
             }
         
         return None
@@ -220,7 +252,6 @@ class AdvancedNLP:
             if keyword in user_input_lower:
                 return class_name
         
-        # Check for numbers
         if "1" in user_input or "one" in user_input or "first" in user_input:
             return "Sleeper"
         elif "2" in user_input or "two" in user_input or "second" in user_input:
@@ -232,12 +263,10 @@ class AdvancedNLP:
     
     def extract_train_number(self, user_input: str) -> Optional[str]:
         """Extract train number from input"""
-        # Look for 5-digit train numbers
         numbers = re.findall(r'\b\d{5}\b', user_input)
         if numbers:
             return numbers[0]
         
-        # Look for any sequence of 4-6 digits
         numbers = re.findall(r'\b\d{4,6}\b', user_input)
         if numbers:
             return numbers[0]
@@ -246,12 +275,10 @@ class AdvancedNLP:
     
     def extract_pnr(self, user_input: str) -> Optional[str]:
         """Extract PNR number from input"""
-        # Look for 10-digit PNR
         numbers = re.findall(r'\b\d{10}\b', user_input)
         if numbers:
             return numbers[0]
         
-        # Look for word "pnr" followed by numbers
         if "pnr" in user_input.lower():
             numbers = re.findall(r'\d+', user_input)
             if numbers:
@@ -260,25 +287,21 @@ class AdvancedNLP:
         return None
     
     def understand_context(self, user_input: str, current_state: str, session_data: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Advanced context understanding
-        Returns extracted information and suggested actions
-        """
         context = {
             "intent": None,
             "extracted_data": {},
             "suggested_action": None,
-            "confidence": 0.0
+            "confidence": 0.0,
+            "engine": "local"
         }
         
-        # Extract intent
         intent_result = self.extract_intent(user_input, current_state)
         if intent_result:
             context["intent"] = intent_result.get("intent")
             context["suggested_action"] = intent_result.get("target")
             context["confidence"] = intent_result.get("confidence", 0.0)
+            context["engine"] = intent_result.get("engine", "local")
         
-        # Extract entities
         train_number = self.extract_train_number(user_input)
         if train_number:
             context["extracted_data"]["train_number"] = train_number
@@ -296,4 +319,3 @@ class AdvancedNLP:
 
 # Global NLP instance
 advanced_nlp = AdvancedNLP()
-

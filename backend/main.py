@@ -89,11 +89,13 @@ async def root():
 
 @app.get("/health")
 async def health():
+    from advanced_nlp import advanced_nlp
     uptime = (datetime.now() - SERVER_START_TIME).total_seconds()
     return {
         "status": "healthy",
         "uptime_seconds": uptime,
-        "active_sessions": len(sessions)
+        "active_sessions": len(sessions),
+        "gemini_active": advanced_nlp.is_gemini_active()
     }
 
 @app.post("/api/ivr/start", response_model=IVRResponse)
