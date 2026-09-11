@@ -93,9 +93,15 @@
                 <div id="ivrOutput" class="chat-stream">
                     <div class="welcome-card">
                         <h3>Welcome to IVR Voice Simulator</h3>
-                        <p>Click <strong>"Start Call"</strong> to begin. Speak naturally or use the keypad to navigate train enquiries.</p>
+                        <p>Click <strong>"Start Call"</strong> to begin. Speak naturally, type below, or use keypad to navigate.</p>
                     </div>
                 </div>
+
+                <!-- Text Input Bar for direct typing -->
+                <form id="chatForm" class="chat-input-bar">
+                    <input type="text" id="userTextInput" placeholder="Type your query here (e.g. 'book ticket' or 'train status')..." autocomplete="off" disabled>
+                    <button type="submit" id="sendBtn" class="btn btn-send" disabled>Send</button>
+                </form>
 
                 <!-- Quick Suggestion Chips -->
                 <div class="suggestion-chips">

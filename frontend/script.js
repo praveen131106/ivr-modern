@@ -1,6 +1,6 @@
 /**
  * Train IVR System - Frontend JavaScript Controller
- * Handles voice control (STT & TTS), keypad input, API interaction, and Gemini AI status.
+ * Handles voice control (STT & TTS), text input field, keypad input, API interaction, and Gemini AI status.
  * Author: Praveen (Conversational IVR Modernization Framework)
  */
 
@@ -33,6 +33,9 @@ const keypadKeys = document.querySelectorAll(".key");
 const trainPills = document.querySelectorAll(".train-pill");
 const suggestionChips = document.querySelectorAll(".chip");
 const engineText = document.getElementById("engineText");
+const chatForm = document.getElementById("chatForm");
+const userTextInput = document.getElementById("userTextInput");
+const sendBtn = document.getElementById("sendBtn");
 
 // Check Backend Engine Status on Load
 async function checkEngineHealth() {
@@ -72,6 +75,7 @@ function initSpeechRecognition() {
     recognition.onresult = (event) => {
         const transcript = event.results[0][0].transcript;
         console.log("Speech recognized:", transcript);
+        if (userTextInput) userTextInput.value = transcript;
         addToOutput(transcript, "user");
         sendInput(transcript);
     };
@@ -179,7 +183,6 @@ function stopTimer() {
 function addToOutput(message, type = "system") {
     if (!ivrOutput) return;
 
-    // Remove welcome card on first message
     const welcomeCard = ivrOutput.querySelector(".welcome-card");
     if (welcomeCard) welcomeCard.remove();
 
@@ -216,10 +219,12 @@ async function startCall() {
         lastSummary = null;
         if (ivrOutput) ivrOutput.innerHTML = "";
 
-        // UI Updates
+        // Enable UI Controls
         if (startCallBtn) startCallBtn.disabled = true;
         if (endCallBtn) endCallBtn.disabled = false;
         if (micButton) micButton.disabled = false;
+        if (userTextInput) userTextInput.disabled = false;
+        if (sendBtn) sendBtn.disabled = false;
         if (downloadTranscriptBtn) downloadTranscriptBtn.disabled = true;
         if (callStatus) callStatus.textContent = "In Call";
         if (statusDot) statusDot.classList.add("active");
@@ -294,6 +299,8 @@ async function endCall() {
         if (startCallBtn) startCallBtn.disabled = false;
         if (endCallBtn) endCallBtn.disabled = true;
         if (micButton) micButton.disabled = true;
+        if (userTextInput) userTextInput.disabled = true;
+        if (sendBtn) sendBtn.disabled = true;
         if (callStatus) callStatus.textContent = "Ready";
         if (statusDot) statusDot.classList.remove("active");
         if (micStatus) micStatus.textContent = "Mic Inactive";
@@ -329,6 +336,19 @@ document.addEventListener("DOMContentLoaded", () => {
     if (micButton) micButton.addEventListener("click", toggleMic);
     if (downloadTranscriptBtn) downloadTranscriptBtn.addEventListener("click", downloadTranscript);
 
+    // Chat Text Form Submission
+    if (chatForm) {
+        chatForm.addEventListener("submit", (e) => {
+            e.preventDefault();
+            const text = userTextInput ? userTextInput.value.trim() : "";
+            if (text && currentSessionId) {
+                addToOutput(text, "user");
+                sendInput(text);
+                userTextInput.value = "";
+            }
+        });
+    }
+
     if (clearHistoryBtn) {
         clearHistoryBtn.addEventListener("click", () => {
             callHistory = [];
@@ -336,7 +356,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 ivrOutput.innerHTML = `
                     <div class="welcome-card">
                         <h3>Welcome to IVR Voice Simulator</h3>
-                        <p>Click <strong>"Start Call"</strong> to begin. Speak naturally or use the keypad to navigate train enquiries.</p>
+                        <p>Click <strong>"Start Call"</strong> to begin. Speak naturally, type below, or use keypad to navigate.</p>
                     </div>`;
             }
         });

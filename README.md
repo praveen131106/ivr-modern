@@ -11,21 +11,22 @@ A complete, production-ready **Conversational IVR Modernization Framework** desi
 
 ## 🌟 Overview & Problem Solved
 
-Traditional Interactive Voice Response (IVR) systems rely heavily on rigid touch-tone keypads (DTMF), rigid visual menus, and deep nested branching. Callers often struggle with long voice prompts, rigid navigation paths, and lack of flexibility.
+Traditional Interactive Voice Response (IVR) systems rely heavily on rigid touch-tone keypads (DTMF) and deep nested branching. Callers often struggle with long voice prompts, rigid navigation paths, and lack of flexibility.
 
 This project **modernizes legacy IVR architectures** by introducing:
-1. **Dual Interaction Model**: Seamlessly handles both keypad (DTMF 0-9, *, #) and natural speech inputs.
-2. **Intent Recognition & NLP**: Uses pattern-matching, fuzzy string distance scoring, and entity extraction to understand user queries such as *"I want to book a ticket for tomorrow"* or *"Check status of train 12718"*.
+1. **Dual Interaction Model**: Seamlessly handles keypad (DTMF 0-9, *, #), direct text queries, and natural speech inputs.
+2. **Intent Recognition & Gemini AI**: Uses Google Gemini AI (`google-genai` SDK) with pattern-matching fallback, fuzzy string distance scoring, and entity extraction to understand complex user queries.
 3. **Dynamic State-Machine Engine**: JSON-driven flow transitions supporting over 10 distinct railway enquiry services with automatic state recovery and context collection.
-4. **Interactive Web Simulator**: Full-featured browser UI simulating call control, real-time timer, Web Speech API (STT & TTS), call history, and downloadable JSON transcripts.
+4. **Interactive Single-Page Viewport Simulator**: Full-featured non-scrolling UI simulating call control, real-time timer, Web Speech API (STT & TTS), text input, call history, and downloadable JSON transcripts.
 
 ---
 
 ## ✨ Key Features
 
 - 🎙️ **Speech & Voice Control**: Native Web Speech API integration for speech-to-text (STT) and text-to-speech (TTS) with speech interruption support.
+- 💬 **Interactive Chat Input**: Text bar allowing users to type directly to the voice assistant alongside speech and keypad controls.
 - 🔢 **Keypad (DTMF) Simulation**: Full phone keypad (0–9, *, #) with instant state transitions.
-- 🧠 **Intelligent NLP Engine**: Recognizes user intent, extracts 5-digit train numbers, 10-digit PNRs, and travel classes even with colloquial phrasing.
+- 🧠 **Google Gemini AI Integration**: Recognizes user intent, extracts 5-digit train numbers, 10-digit PNRs, and travel classes.
 - 🔄 **10+ Modular Enquiry Flows**:
   - 🎟️ Ticket Booking & Class Selection
   - 📍 Live Train Running Status
@@ -41,176 +42,44 @@ This project **modernizes legacy IVR architectures** by introducing:
 
 ---
 
-## 🏗️ Architecture & Technology Stack
+## 🚀 Deployment Guide (Netlify & Vercel)
 
-### System Architecture
+### 🔹 Option 1: Frontend Deployment on Netlify
+The repository includes a pre-configured `netlify.toml`.
 
-```
-                               ┌──────────────────────────────────────────┐
-                               │       Frontend (Browser Simulator)       │
-                               │  - Web Speech API (STT & TTS)            │
-                               │  - Interactive Keypad & Timer            │
-                               │  - Call History & Transcript Export      │
-                               └────────────────────┬─────────────────────┘
-                                                    │ REST API
-                                                    ▼
-                               ┌──────────────────────────────────────────┐
-                               │           FastAPI Backend Server         │
-                               │  - Route Handlers (/api/ivr/*, /health)  │
-                               │  - In-Memory Session Storage             │
-                               └──────────────┬──────────────┬────────────┘
-                                              │              │
-                                              ▼              ▼
-                              ┌──────────────────┐  ┌──────────────────┐
-                              │   Flow Manager   │  │    NLP Engine    │
-                              │ (JSON State Machine)│(Intent & Entity) │
-                              └──────────────┬───┘  └──────────────────┘
-                                             │
-                                             ▼
-                              ┌────────────────────────────────┐
-                              │ backend/flows/*.json           │
-                              │ (10 Service Flow Definitions)  │
-                              └────────────────────────────────┘
-```
-
-### Tech Stack
-- **Backend Framework**: Python 3.9+, FastAPI, Uvicorn, Pydantic
-- **Frontend**: Plain HTML5, Modern Vanilla CSS3, ES6 JavaScript
-- **NLP Engine**: Custom pattern matching, Difflib `SequenceMatcher`, regex entity extractors
-- **Testing**: Pytest, Pytest-Asyncio, HTTPX AsyncClient
+1. Log in to [Netlify](https://app.netlify.com/).
+2. Click **Add new site** → **Import an existing project** → Connect to your GitHub repository `ivr-modern`.
+3. Set **Publish directory** to `frontend`.
+4. Click **Deploy site**. Your web simulator will be live instantly!
 
 ---
 
-## 📂 Folder Structure
+### 🔹 Option 2: Frontend Deployment on Vercel
+The repository includes a pre-configured `vercel.json`.
 
-```
-ivr-modern/
-├── backend/
-│   ├── main.py                 # FastAPI application entry point & session routes
-│   ├── flows/                  # JSON-based IVR state definitions
-│   │   ├── train_main.json     # Main menu flow
-│   │   ├── booking.json        # Ticket booking flow
-│   │   ├── status.json         # Train running status flow
-│   │   ├── schedule.json       # Train schedule flow
-│   │   ├── cancellation.json   # Cancellation & refund flow
-│   │   ├── pnr_status.json     # PNR status flow
-│   │   ├── seat_availability.json # Seat availability flow
-│   │   ├── fare_enquiry.json   # Fare enquiry flow
-│   │   ├── train_between_stations.json # Route finder flow
-│   │   └── agent.json          # Customer support agent handoff
-│   ├── utils/
-│   │   ├── flow_manager.py     # State machine & transition processing engine
-│   │   └── advanced_nlp.py     # Intent recognition & entity extraction engine
-│   └── logs/                   # Auto-generated JSON call summaries
-├── frontend/
-│   ├── index.html              # Interactive IVR Simulator UI
-│   ├── script.js               # Web Speech API, Keypad & Fetch integration
-│   └── style.css               # Responsive design & theme
-├── test_api.py                 # Sync Pytest endpoint test suite
-├── test_api_endpoints.py       # Async HTTPX endpoint test suite
-├── test_flow_manager.py        # State machine unit tests
-├── conftest.py                 # Pytest fixtures & environment setup
-├── requirements.txt            # Python dependencies
-├── .env.example                # Sample configuration environment variables
-├── Dockerfile                  # Containerization dockerfile
-├── Procfile                    # Deployment process configuration
-├── .gitignore                  # Git repository exclusion rules
-├── LICENSE.md                  # License file
-└── README.md                   # Project documentation
-```
+1. Log in to [Vercel](https://vercel.com/).
+2. Click **Add New** → **Project** → Select `praveen131106/ivr-modern`.
+3. Set **Output Directory** to `frontend`.
+4. Click **Deploy**.
 
 ---
 
-## 🚀 Quick Start & Installation
+### 🔹 Option 3: Backend API Deployment
+The FastAPI backend can be deployed on any Python host (e.g. Railway, Render, Fly.io, or AWS EC2):
 
-### Prerequisites
-- **Python 3.9+** installed
-- **Modern Web Browser** (Google Chrome or Microsoft Edge recommended for Web Speech API support)
-
-### Installation Steps
-
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/praveen131106/ivr-modern.git
-   cd ivr-modern
-   ```
-
-2. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. **(Optional) Configure environment:**
-   Copy `.env.example` to `.env`:
-   ```bash
-   cp .env.example .env
-   ```
-
----
-
-## 💻 Running the Application
-
-### 1. Start the Backend API Server
-
-Using Python directly:
+Using Docker:
 ```bash
-python -m uvicorn backend.main:app --port 8000 --reload
-```
-
-Or using the startup script (Windows):
-```bash
-start_backend.bat
-```
-
-Or using the startup script (Linux/Mac):
-```bash
-chmod +x start_backend.sh
-./start_backend.sh
-```
-
-The backend server will be live at `http://localhost:8000`. You can inspect interactive OpenAPI documentation at `http://localhost:8000/docs`.
-
-### 2. Launch the Frontend IVR Simulator
-
-Open `frontend/index.html` directly in your browser, or launch a simple local HTTP server:
-
-```bash
-cd frontend
-python -m http.server 8080
-```
-Then visit `http://localhost:8080` in your web browser.
-
----
-
-## 📡 API Reference
-
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| `GET` | `/` | API description & available endpoints |
-| `GET` | `/health` | Server health check, uptime, & active session metrics |
-| `POST` | `/api/ivr/start` | Initialize a new IVR call session |
-| `POST` | `/api/ivr/input` | Send user keypad or speech input to process next state |
-| `POST` | `/api/ivr/end` | Terminate session & generate call summary transcript |
-| `GET` | `/api/flows` | List loaded IVR flow definitions |
-| `GET` | `/api/session/{id}` | Inspect active session state (debugging) |
-
-### Example Input Request (`POST /api/ivr/input`)
-```json
-{
-  "session_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
-  "input": "book a ticket for train 12718"
-}
+docker build -t ivr-backend .
+docker run -p 8000:8000 -e GEMINI_API_KEY="your_api_key" ivr-backend
 ```
 
 ---
 
 ## 🧪 Testing
 
-The repository includes a 100% passing test suite built with `pytest` and `httpx`.
-
 Run all unit tests:
 ```bash
-pytest -v
+python -m pytest -v
 ```
 
 Expected Output:
@@ -226,15 +95,8 @@ test_flow_manager.py::test_flows_are_loaded PASSED                       [ 80%]
 test_flow_manager.py::test_keypad_transition_to_booking PASSED           [ 90%]
 test_flow_manager.py::test_invalid_input_recovers PASSED                 [100%]
 
-======================== 10 passed in 0.18s ========================
+======================== 10 passed in 0.20s ========================
 ```
-
----
-
-## ⚙️ Known Limitations & Future Improvements
-
-- **In-Memory Sessions**: Sessions are currently stored in-memory. For multi-node production setups, a Redis session store can be integrated.
-- **Web Speech API Browser Dependency**: Voice recognition relies on browser Web Speech API capabilities. Integrating WebSockets with a server-side speech engine (e.g. Whisper / Vosk) would enable headless voice calls.
 
 ---
 
