@@ -283,8 +283,12 @@ class FlowManager:
                 elif field == "pnr":
                     extracted_val = advanced_nlp.extract_pnr(user_input)
                     
-                session["data"][field] = extracted_val if extracted_val else user_input
-                target_state = action.get("next_state", "")
+                if extracted_val:
+                    session["data"][field] = extracted_val
+                    target_state = action.get("next_state", "")
+                elif field not in ["train_number", "pnr", "train_class"]:
+                    session["data"][field] = user_input
+                    target_state = action.get("next_state", "")
                 
             if not target_state and nlp_result and nlp_result.get("target"):
                 if nlp_result.get("confidence", 0.0) > 0.7:

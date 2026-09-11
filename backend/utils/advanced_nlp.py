@@ -243,6 +243,16 @@ class AdvancedNLP:
                 "intent": best_intent,
                 "engine": "local"
             }
+            
+        # Infer booking flow if user mentions train number/name at main menu without explicit intent verb
+        train_num = self.extract_train_number(user_input)
+        if train_num and current_state == "main_menu":
+            return {
+                "target": "flow:booking",
+                "confidence": 0.85,
+                "intent": "booking",
+                "engine": "local"
+            }
         
         return None
     
@@ -252,18 +262,22 @@ class AdvancedNLP:
             return None
             
         user_input_lower = user_input.lower().strip()
-        if user_input_lower in ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "*", "#"]:
-            return None
-            
+        
+        # If input is a train number or PNR digit sequence without class keywords, do not extract class
+        if re.search(r'\b\d{4,10}\b', user_input_lower):
+            if not any(c in user_input_lower for c in ["sleeper", "ac", "tatkal", "tier", "first class"]):
+                return None
+
         for keyword, class_name in self.class_mappings.items():
             if keyword in user_input_lower:
                 return class_name
         
-        if "1" in user_input or "one" in user_input or "first" in user_input:
+        # Match standalone class choice numbers using word boundaries
+        if re.search(r'\b(1|one|first)\b', user_input_lower):
             return "Sleeper"
-        elif "2" in user_input or "two" in user_input or "second" in user_input:
+        elif re.search(r'\b(2|two|second)\b', user_input_lower):
             return "AC"
-        elif "3" in user_input or "three" in user_input or "third" in user_input:
+        elif re.search(r'\b(3|three|third)\b', user_input_lower):
             return "Tatkal"
         
         return None
