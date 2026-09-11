@@ -47,9 +47,6 @@
                     <button id="endCall" class="btn btn-end" disabled>
                         <span class="btn-icon">📴</span> End Call
                     </button>
-                    <button id="micButton" class="btn btn-mic" disabled>
-                        <span class="btn-icon">🎤</span> Speak
-                    </button>
                 </div>
 
                 <!-- DTMF Keypad Grid -->
@@ -93,13 +90,13 @@
                 <div id="ivrOutput" class="chat-stream">
                     <div class="welcome-card">
                         <h3>Welcome to IVR Voice Simulator</h3>
-                        <p>Click <strong>"Start Call"</strong> to begin. Speak naturally, type below, or use keypad to navigate.</p>
+                        <p>Click <strong>"Start Call"</strong> to begin. Hands-free voice recognition will automatically listen as you talk!</p>
                     </div>
                 </div>
 
                 <!-- Text Input Bar for direct typing -->
                 <form id="chatForm" class="chat-input-bar">
-                    <input type="text" id="userTextInput" placeholder="Type your query here (e.g. 'book ticket' or 'train status')..." autocomplete="off" disabled>
+                    <input type="text" id="userTextInput" placeholder="Type your query here or just speak hands-free..." autocomplete="off" disabled>
                     <button type="submit" id="sendBtn" class="btn btn-send" disabled>Send</button>
                 </form>
 

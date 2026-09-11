@@ -1,6 +1,6 @@
 /**
  * Train IVR System - Frontend JavaScript Controller
- * Handles voice control (STT & TTS), text input field, keypad input, API interaction, and Gemini AI status.
+ * Hands-Free Continuous Voice Control (STT & TTS), Keypad, Direct Typing & Gemini AI status.
  * Author: Praveen (Conversational IVR Modernization Framework)
  */
 
@@ -21,7 +21,6 @@ let lastSummary = null;
 // DOM Elements
 const startCallBtn = document.getElementById("startCall");
 const endCallBtn = document.getElementById("endCall");
-const micButton = document.getElementById("micButton");
 const callTimer = document.getElementById("callTimer");
 const callStatus = document.getElementById("callStatus");
 const statusDot = document.getElementById("statusDot");
@@ -52,7 +51,7 @@ async function checkEngineHealth() {
     }
 }
 
-// Initialize Speech Recognition
+// Initialize Continuous Speech Recognition
 function initSpeechRecognition() {
     if (!("webkitSpeechRecognition" in window) && !("SpeechRecognition" in window)) {
         console.warn("Speech recognition is not supported in this browser.");
@@ -62,77 +61,69 @@ function initSpeechRecognition() {
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     recognition = new SpeechRecognition();
-    recognition.continuous = false;
+    recognition.continuous = true;  // Continuous hands-free listening
     recognition.interimResults = false;
     recognition.lang = "en-US";
 
     recognition.onstart = () => {
         isListening = true;
-        if (micStatus) micStatus.textContent = "🎤 Listening... Speak now!";
-        if (micButton) micButton.classList.add("listening");
+        if (micStatus) micStatus.textContent = "🎤 Voice Active — Listening...";
     };
 
     recognition.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
-        console.log("Speech recognized:", transcript);
-        if (userTextInput) userTextInput.value = transcript;
-        addToOutput(transcript, "user");
-        sendInput(transcript);
+        const lastResultIndex = event.results.length - 1;
+        const transcript = event.results[lastResultIndex][0].transcript.trim();
+        if (transcript) {
+            console.log("Hands-free speech recognized:", transcript);
+            if (userTextInput) userTextInput.value = transcript;
+            addToOutput(transcript, "user");
+            sendInput(transcript);
+        }
     };
 
     recognition.onerror = (event) => {
         console.warn("Speech recognition notice:", event.error);
-        if (event.error === "no-speech") {
-            if (micStatus) micStatus.textContent = "No speech heard. Try again.";
-        } else if (event.error !== "aborted") {
-            if (micStatus) micStatus.textContent = `Mic error: ${event.error}`;
+        if (event.error !== "aborted" && event.error !== "no-speech") {
+            if (micStatus) micStatus.textContent = `Voice note: ${event.error}`;
         }
-        stopListening();
     };
 
     recognition.onend = () => {
-        stopListening();
+        isListening = false;
+        // Auto-resume continuous listening if call is active and TTS is not speaking
+        if (currentSessionId && !isSpeaking) {
+            setTimeout(() => startContinuousListening(), 300);
+        } else {
+            if (micStatus) micStatus.textContent = currentSessionId ? "Call Active" : "Mic Inactive";
+        }
     };
 
     return recognition;
 }
 
-function stopListening() {
-    isListening = false;
-    if (micStatus) micStatus.textContent = currentSessionId ? "Call Active" : "Mic Inactive";
-    if (micButton) micButton.classList.remove("listening");
-}
-
-function toggleMic() {
-    if (!currentSessionId) {
-        alert("Please start a call first.");
-        return;
-    }
-
-    // Stop any ongoing Text-To-Speech to free up the audio device
-    stopSpeechSynthesis();
+function startContinuousListening() {
+    if (!currentSessionId || isSpeaking) return;
 
     if (!recognition) {
         recognition = initSpeechRecognition();
-        if (!recognition) {
-            alert("Speech recognition is not supported on your browser. Please use Google Chrome or Microsoft Edge.");
-            return;
-        }
+        if (!recognition) return;
     }
 
-    if (isListening) {
-        try { recognition.stop(); } catch (e) {}
-        stopListening();
-    } else {
-        // Small 200ms timeout ensures audio channel is clear before microphone start
-        setTimeout(() => {
-            try {
-                recognition.start();
-            } catch (e) {
-                console.error("Failed to start mic:", e);
-                stopListening();
-            }
-        }, 200);
+    if (!isListening) {
+        try {
+            recognition.start();
+        } catch (e) {
+            console.log("Mic start note:", e);
+        }
+    }
+}
+
+function stopContinuousListening() {
+    if (recognition && isListening) {
+        try {
+            recognition.stop();
+        } catch (e) {}
+        isListening = false;
     }
 }
 
@@ -140,24 +131,36 @@ function toggleMic() {
 function speakText(text) {
     if (!("speechSynthesis" in window)) return;
     
-    stopSpeechSynthesis();
+    // Pause continuous voice recognition while computer speaker is active
+    stopContinuousListening();
+    
+    if ("speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+    }
+
     const cleanText = text.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}]/gu, '');
     const utterance = new SpeechSynthesisUtterance(cleanText);
     utterance.rate = 0.95;
     utterance.pitch = 1.0;
 
     utterance.onstart = () => { isSpeaking = true; };
-    utterance.onend = () => { isSpeaking = false; };
-    utterance.onerror = () => { isSpeaking = false; };
+    
+    // When assistant finishes speaking, automatically resume continuous listening hands-free
+    utterance.onend = () => {
+        isSpeaking = false;
+        if (currentSessionId) {
+            setTimeout(() => startContinuousListening(), 400);
+        }
+    };
+
+    utterance.onerror = () => {
+        isSpeaking = false;
+        if (currentSessionId) {
+            setTimeout(() => startContinuousListening(), 400);
+        }
+    };
 
     window.speechSynthesis.speak(utterance);
-}
-
-function stopSpeechSynthesis() {
-    if ("speechSynthesis" in window) {
-        window.speechSynthesis.cancel();
-        isSpeaking = false;
-    }
 }
 
 // Timer Functions
@@ -222,13 +225,11 @@ async function startCall() {
         // Enable UI Controls
         if (startCallBtn) startCallBtn.disabled = true;
         if (endCallBtn) endCallBtn.disabled = false;
-        if (micButton) micButton.disabled = false;
         if (userTextInput) userTextInput.disabled = false;
         if (sendBtn) sendBtn.disabled = false;
         if (downloadTranscriptBtn) downloadTranscriptBtn.disabled = true;
         if (callStatus) callStatus.textContent = "In Call";
         if (statusDot) statusDot.classList.add("active");
-        if (micStatus) micStatus.textContent = "Call Active";
 
         startTimer();
         addToOutput(data.message, "system");
@@ -243,7 +244,7 @@ async function startCall() {
 async function sendInput(inputVal) {
     if (!currentSessionId) return;
 
-    stopSpeechSynthesis();
+    stopContinuousListening();
     try {
         const response = await fetch(`${API_BASE_URL}/api/ivr/input`, {
             method: "POST",
@@ -274,8 +275,10 @@ async function sendInput(inputVal) {
 async function endCall() {
     if (!currentSessionId) return;
 
-    stopSpeechSynthesis();
-    stopListening();
+    if ("speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+    }
+    stopContinuousListening();
 
     try {
         const response = await fetch(`${API_BASE_URL}/api/ivr/end`, {
@@ -298,7 +301,6 @@ async function endCall() {
 
         if (startCallBtn) startCallBtn.disabled = false;
         if (endCallBtn) endCallBtn.disabled = true;
-        if (micButton) micButton.disabled = true;
         if (userTextInput) userTextInput.disabled = true;
         if (sendBtn) sendBtn.disabled = true;
         if (callStatus) callStatus.textContent = "Ready";
@@ -333,7 +335,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (startCallBtn) startCallBtn.addEventListener("click", startCall);
     if (endCallBtn) endCallBtn.addEventListener("click", endCall);
-    if (micButton) micButton.addEventListener("click", toggleMic);
     if (downloadTranscriptBtn) downloadTranscriptBtn.addEventListener("click", downloadTranscript);
 
     // Chat Text Form Submission
@@ -356,7 +357,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 ivrOutput.innerHTML = `
                     <div class="welcome-card">
                         <h3>Welcome to IVR Voice Simulator</h3>
-                        <p>Click <strong>"Start Call"</strong> to begin. Speak naturally, type below, or use keypad to navigate.</p>
+                        <p>Click <strong>"Start Call"</strong> to begin. Hands-free voice recognition will automatically listen as you talk!</p>
                     </div>`;
             }
         });
