@@ -1,6 +1,6 @@
 /**
  * Train IVR System - Frontend JavaScript Controller
- * Hands-Free Continuous Voice Control (STT & TTS), Keypad, Direct Typing & Gemini AI status.
+ * Explicit Browser Mic Permission Prompt, Hands-Free Voice Control (STT & TTS), Keypad & Direct Typing.
  * Author: Praveen (Conversational IVR Modernization Framework)
  */
 
@@ -17,6 +17,7 @@ let isListening = false;
 let isSpeaking = false;
 let callHistory = [];
 let lastSummary = null;
+let micPermissionGranted = false;
 
 // DOM Elements
 const startCallBtn = document.getElementById("startCall");
@@ -51,6 +52,29 @@ async function checkEngineHealth() {
     }
 }
 
+// Request Browser Microphone Access Dialog
+async function requestMicPermission() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        console.warn("getUserMedia is not supported on this browser context.");
+        return true;
+    }
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        // Permission granted! Stop the stream track so SpeechRecognition can capture audio cleanly
+        stream.getTracks().forEach(track => track.stop());
+        micPermissionGranted = true;
+        return true;
+    } catch (err) {
+        console.warn("Microphone permission notice:", err);
+        micPermissionGranted = false;
+        if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
+            addToOutput("Microphone access was denied. Please click the Lock icon in your browser address bar and set Microphone to 'Allow'.", "system");
+            if (micStatus) micStatus.textContent = "⚠️ Mic Blocked in Browser";
+        }
+        return false;
+    }
+}
+
 // Initialize Continuous Speech Recognition
 function initSpeechRecognition() {
     if (!("webkitSpeechRecognition" in window) && !("SpeechRecognition" in window)) {
@@ -61,7 +85,7 @@ function initSpeechRecognition() {
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     recognition = new SpeechRecognition();
-    recognition.continuous = true;  // Continuous hands-free listening
+    recognition.continuous = true;
     recognition.interimResults = false;
     recognition.lang = "en-US";
 
@@ -83,18 +107,20 @@ function initSpeechRecognition() {
 
     recognition.onerror = (event) => {
         console.warn("Speech recognition notice:", event.error);
-        if (event.error !== "aborted" && event.error !== "no-speech") {
+        if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+            micPermissionGranted = false;
+            if (micStatus) micStatus.textContent = "⚠️ Mic Blocked. Allow in URL bar.";
+        } else if (event.error !== "aborted" && event.error !== "no-speech") {
             if (micStatus) micStatus.textContent = `Voice note: ${event.error}`;
         }
     };
 
     recognition.onend = () => {
         isListening = false;
-        // Auto-resume continuous listening if call is active and TTS is not speaking
-        if (currentSessionId && !isSpeaking) {
+        if (currentSessionId && !isSpeaking && micPermissionGranted) {
             setTimeout(() => startContinuousListening(), 300);
         } else {
-            if (micStatus) micStatus.textContent = currentSessionId ? "Call Active" : "Mic Inactive";
+            if (micStatus) micStatus.textContent = currentSessionId ? (micPermissionGranted ? "Call Active" : "⚠️ Mic Blocked") : "Mic Inactive";
         }
     };
 
@@ -131,7 +157,6 @@ function stopContinuousListening() {
 function speakText(text) {
     if (!("speechSynthesis" in window)) return;
     
-    // Pause continuous voice recognition while computer speaker is active
     stopContinuousListening();
     
     if ("speechSynthesis" in window) {
@@ -145,7 +170,6 @@ function speakText(text) {
 
     utterance.onstart = () => { isSpeaking = true; };
     
-    // When assistant finishes speaking, automatically resume continuous listening hands-free
     utterance.onend = () => {
         isSpeaking = false;
         if (currentSessionId) {
@@ -206,6 +230,10 @@ function addToOutput(message, type = "system") {
 async function startCall() {
     try {
         if (callStatus) callStatus.textContent = "Connecting...";
+
+        // Request browser microphone permission popup on user click gesture
+        const micOk = await requestMicPermission();
+
         const response = await fetch(`${API_BASE_URL}/api/ivr/start`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -234,6 +262,10 @@ async function startCall() {
         startTimer();
         addToOutput(data.message, "system");
         speakText(data.message);
+
+        if (micOk) {
+            setTimeout(() => startContinuousListening(), 500);
+        }
     } catch (error) {
         console.error("Error starting call:", error);
         if (callStatus) callStatus.textContent = "Call Failed";
@@ -357,7 +389,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 ivrOutput.innerHTML = `
                     <div class="welcome-card">
                         <h3>Welcome to IVR Voice Simulator</h3>
-                        <p>Click <strong>"Start Call"</strong> to begin. Hands-free voice recognition will automatically listen as you talk!</p>
+                        <p>Click <strong>"Start Call"</strong> to begin. Browser will prompt to allow microphone access automatically!</p>
                     </div>`;
             }
         });
