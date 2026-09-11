@@ -219,7 +219,9 @@ class AdvancedNLP:
             
             for keyword in keywords:
                 if keyword in user_input_lower:
-                    score = weight * 1.0
+                    # Longer matching keywords (e.g. "cancel ticket" vs "ticket") get higher precision score
+                    length_bonus = min(len(keyword) * 0.02, 0.5)
+                    score = (weight * 1.0) + length_bonus
                     if score > best_score:
                         best_score = score
                         best_match = pattern_data["target"]

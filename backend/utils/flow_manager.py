@@ -70,6 +70,46 @@ class FlowManager:
         """Get a flow by name"""
         return self.flows_cache.get(flow_name, {})
     
+    def _execute_transition(
+        self,
+        flow: Dict[str, Any],
+        target_state: str,
+        session: Dict[str, Any],
+        user_input: str
+    ) -> Tuple[str, str, Optional[Dict[str, str]], bool]:
+        """Execute state transition and resolve any dynamic responses or data collection prompts"""
+        if target_state.startswith("flow:"):
+            return (target_state, "", {}, False)
+            
+        states = flow.get("states", {})
+        if target_state not in states:
+            return ("flow:train_main", "Returning to main menu.", {}, False)
+            
+        state_data = states[target_state]
+        actions = state_data.get("actions", {})
+        
+        if "dynamic_response" in actions:
+            func_name = actions["dynamic_response"].get("function", "")
+            message = self._generate_dynamic_response(func_name, session, user_input)
+            next_s = actions["dynamic_response"].get("next_state", "main_menu")
+            
+            if next_s.startswith("flow:"):
+                return (next_s, message, {}, False)
+            elif next_s == "main_menu" and flow.get("name") != "train_main":
+                return ("flow:train_main", message, {}, False)
+            elif next_s in states:
+                ns_data = states[next_s]
+                return (next_s, message, ns_data.get("options", {}), ns_data.get("is_end", False))
+            else:
+                return ("main_menu", message, {}, False)
+                
+        return (
+            target_state,
+            state_data.get("message", ""),
+            state_data.get("options", {}),
+            state_data.get("is_end", False)
+        )
+
     def process_input(
         self,
         flow: Dict[str, Any],
@@ -87,210 +127,93 @@ class FlowManager:
         states = flow.get("states", {})
         state_data = states.get(current_state, {})
         
-        # Handle keypad input
+        target_state = None
+        
+        # 1. Handle Keypad Input
         if is_keypad:
             transitions = state_data.get("transitions", {})
             keypad_map = state_data.get("keypad_map", {})
             
-            # First, check if we need to collect data before transition
+            # Check if collect_data is active in current state
             if "actions" in state_data and "collect_data" in state_data["actions"]:
                 action = state_data["actions"]["collect_data"]
                 field = action.get("field", "")
                 
-                # Map keypad input to actual value (for class selection)
                 if field == "train_class":
                     class_map = {"1": "Sleeper", "2": "AC", "3": "Tatkal"}
-                    if user_input in class_map:
-                        session["data"][field] = class_map[user_input]
+                    session["data"][field] = class_map.get(user_input, user_input)
+                else:
+                    session["data"][field] = user_input
+                    
+                target_state = action.get("next_state", "")
+            
+            elif user_input in keypad_map:
+                target_state = keypad_map[user_input]
+            elif user_input in transitions:
+                target_state = transitions[user_input]
                 
-                # Get next state
-                target = action.get("next_state", "")
-                if target.startswith("flow:"):
-                    return (target, "", {}, False)
-                elif target in states:
-                    next_state_data = states[target]
-                    return (
-                        target,
-                        next_state_data.get("message", ""),
-                        next_state_data.get("options", {}),
-                        next_state_data.get("is_end", False)
-                    )
-            
-            # Check direct keypad mapping
-            if user_input in keypad_map:
-                target = keypad_map[user_input]
-                if target.startswith("flow:"):
-                    return (target, "", {}, False)
-                elif target in states:
-                    next_state_data = states[target]
-                    return (
-                        target,
-                        next_state_data.get("message", ""),
-                        next_state_data.get("options", {}),
-                        next_state_data.get("is_end", False)
-                    )
-            
-            # Check transitions
-            if user_input in transitions:
-                target = transitions[user_input]
-                return self._follow_transition(target, states, session)
-        
-        # Handle speech/NLP input with intelligent processing
+        # 2. Handle Speech/NLP Input
         else:
-            # Use NLP engine for intent understanding
             nlp_result = advanced_nlp.extract_intent(user_input, current_state)
             
-            # Handle greetings separately - respond naturally
             if nlp_result and nlp_result.get("type") == "greeting":
                 greeting_response = nlp_result.get("response", "Hello! How can I help you?")
-                # Return greeting response but stay in current state
                 return (current_state, greeting_response, state_data.get("options", {}), False)
-            
-            # First, check if we need to collect data before transition
+                
             if "actions" in state_data and "collect_data" in state_data["actions"]:
                 action = state_data["actions"]["collect_data"]
                 field = action.get("field", "")
                 
-                # Use advanced NLP to extract class
+                extracted_val = None
                 if field == "train_class":
-                    extracted_class = advanced_nlp.extract_class_from_speech(user_input)
-                    if extracted_class:
-                        session["data"][field] = extracted_class
-                        target = action.get("next_state", "")
-                        if target in states:
-                            next_state_data = states[target]
-                            return (
-                                target,
-                                next_state_data.get("message", ""),
-                                next_state_data.get("options", {}),
-                                next_state_data.get("is_end", False)
-                            )
+                    extracted_val = advanced_nlp.extract_class_from_speech(user_input)
+                elif field == "train_number":
+                    extracted_val = advanced_nlp.extract_train_number(user_input)
+                elif field == "pnr":
+                    extracted_val = advanced_nlp.extract_pnr(user_input)
+                    
+                session["data"][field] = extracted_val if extracted_val else user_input
+                target_state = action.get("next_state", "")
                 
-                # Extract train number, PNR, etc. from any input
-                if field == "train_number":
-                    train_num = advanced_nlp.extract_train_number(user_input)
-                    if train_num:
-                        session["data"][field] = train_num
-                        target = action.get("next_state", "")
-                        if target in states:
-                            next_state_data = states[target]
-                            return (
-                                target,
-                                next_state_data.get("message", ""),
-                                next_state_data.get("options", {}),
-                                next_state_data.get("is_end", False)
-                            )
-                
-                if field == "pnr":
-                    pnr = advanced_nlp.extract_pnr(user_input)
-                    if pnr:
-                        session["data"][field] = pnr
-                        target = action.get("next_state", "")
-                        if target in states:
-                            next_state_data = states[target]
-                            return (
-                                target,
-                                next_state_data.get("message", ""),
-                                next_state_data.get("options", {}),
-                                next_state_data.get("is_end", False)
-                            )
+            if not target_state and nlp_result and nlp_result.get("target"):
+                if nlp_result.get("confidence", 0.0) > 0.7:
+                    target_state = nlp_result["target"]
+                    
+            if not target_state:
+                keywords = state_data.get("keywords", {})
+                for k, t in keywords.items():
+                    if k in user_input:
+                        target_state = t
+                        break
+                        
+            if not target_state:
+                speech_patterns = state_data.get("speech_patterns", {})
+                for p, t in speech_patterns.items():
+                    if p in user_input:
+                        target_state = t
+                        break
+                        
+            if not target_state:
+                for p, t in speech_patterns.items():
+                    if advanced_nlp.similarity(user_input, p) > 0.6:
+                        target_state = t
+                        break
+
+        # 3. Process Target State Transition if resolved
+        if target_state:
+            return self._execute_transition(flow, target_state, session, user_input)
             
-            # Use Advanced NLP intent recognition
-            if nlp_result and nlp_result.get("target"):
-                target = nlp_result["target"]
-                confidence = nlp_result.get("confidence", 0.0)
-                
-                if confidence > 0.7:  # High confidence match
-                    return self._follow_transition(target, states, session)
-            
-            # Fallback to simple keyword matching for backwards compatibility
-            keywords = state_data.get("keywords", {})
-            for keyword, target in keywords.items():
-                if keyword in user_input:
-                    return self._follow_transition(target, states, session)
-            
-            # Check for common phrases
-            speech_patterns = state_data.get("speech_patterns", {})
-            for pattern, target in speech_patterns.items():
-                if pattern in user_input:
-                    return self._follow_transition(target, states, session)
-            
-            # If nothing matched, check for partial matches or similar phrases
-            # This helps avoid getting stuck on slightly wrong input
-            for pattern, target in speech_patterns.items():
-                similarity = advanced_nlp.similarity(user_input, pattern)
-                if similarity > 0.6:  # Partial match threshold
-                    return self._follow_transition(target, states, session)
-        
-        # Handle special actions (data collection, dynamic responses)
-        actions = state_data.get("actions", {})
-        if "collect_data" in actions:
-            field = actions["collect_data"].get("field", "")
-            session["data"][field] = user_input
-            
-            # Move to next state after data collection
-            next_state = actions["collect_data"].get("next_state", "")
-            if next_state.startswith("flow:"):
-                return (next_state, "", {}, False)
-            elif next_state in states:
-                next_state_data = states[next_state]
-                next_message = next_state_data.get("message", "")
-                
-                # If next state also collects data, automatically show that question
-                # Don't wait for another input - show the question immediately
-                if "actions" in next_state_data and "collect_data" in next_state_data["actions"]:
-                    # Return with the next question message
-                    return (
-                        next_state,
-                        next_message,  # This will be spoken/displayed immediately
-                        next_state_data.get("options", {}),
-                        next_state_data.get("is_end", False)
-                    )
-                else:
-                    # Next state doesn't collect data, just show message
-                    return (
-                        next_state,
-                        next_message,
-                        next_state_data.get("options", {}),
-                        next_state_data.get("is_end", False)
-                    )
-        
-        # Handle dynamic responses (train status, booking confirmation, etc.)
-        if "dynamic_response" in actions:
-            response_func = actions["dynamic_response"].get("function", "")
-            message = self._generate_dynamic_response(response_func, session, user_input)
-            next_state = actions["dynamic_response"].get("next_state", "main_menu")
-            
-            # Check if returning to main menu
-            if next_state == "main_menu" and flow.get("name") != "train_main":
-                return ("flow:train_main", "", {}, False)
-            elif next_state in states:
-                return (
-                    next_state,
-                    message,
-                    states[next_state].get("options", {}),
-                    states[next_state].get("is_end", False)
-                )
-            else:
-                # Return to main menu in main flow
-                main_menu = states.get("main_menu", {})
-                return (
-                    "main_menu",
-                    message,
-                    main_menu.get("options", {}),
-                    False
-                )
-        
-        # Default: invalid input - provide helpful message with graceful recovery
+        # 4. If current state itself has dynamic_response (e.g. initial_state)
+        if "actions" in state_data and "dynamic_response" in state_data["actions"]:
+            return self._execute_transition(flow, current_state, session, user_input)
+
+        # 5. Default: invalid input - provide helpful message with graceful recovery
         if current_state == "main_menu":
-            # Friendly response for invalid input in main menu
             invalid_msg = "I'm sorry, I didn't quite catch that. No worries! Let me help you: You can say things like 'book a ticket', 'check train status', 'schedule', 'cancel ticket', 'PNR status', 'seat availability', 'fare enquiry', 'trains between stations', or 'speak to agent'. Or you can press any number from 0 to 9 on the keypad. What would you like to do?"
         else:
-            # Context-aware invalid message based on current state
             invalid_msg = state_data.get("invalid_input_message", 
                 "I didn't quite understand that. Could you please try again? You can also say 'go back' or 'main menu' to return to the main menu, or press star on the keypad.")
             
-            # Add helpful hints based on what we're trying to collect
             if "actions" in state_data and "collect_data" in state_data["actions"]:
                 field = state_data["actions"]["collect_data"].get("field", "")
                 if field == "train_number":
@@ -309,20 +232,7 @@ class FlowManager:
         session: Dict[str, Any]
     ) -> Tuple[str, str, Optional[Dict[str, str]], bool]:
         """Follow a transition to a target state or flow"""
-        if target.startswith("flow:"):
-            # Transition to another flow
-            return (target, "", {}, False)
-        elif target in states:
-            next_state_data = states[target]
-            return (
-                target,
-                next_state_data.get("message", ""),
-                next_state_data.get("options", {}),
-                next_state_data.get("is_end", False)
-            )
-        else:
-            # Invalid target
-            return ("main_menu", "Invalid navigation. Returning to main menu.", {}, False)
+        return self._execute_transition({"states": states, "name": ""}, target, session, "")
     
     def _generate_dynamic_response(
         self,
