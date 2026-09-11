@@ -92,13 +92,18 @@ class FlowManager:
         # 1. Slot extraction & instant confirmation for booking flow
         if target_flow_name == "booking":
             clean_input = user_input.lower().strip()
-            if clean_input in ["1", "book", "booking", "ticket", "book ticket", "book a ticket", "i want to book a ticket"]:
+            
+            # Clear previous transient booking slots so every booking request starts fresh
+            session["data"].pop("train_class", None)
+            session["data"].pop("train_number", None)
+
+            if clean_input in ["1", "book", "booking", "ticket", "book ticket", "book a ticket", "i want to book a ticket", "book another ticket", "book another train", "another ticket", "another train"]:
                 cls = None
+                train = None
             else:
                 cls = advanced_nlp.extract_class_from_speech(user_input)
+                train = advanced_nlp.extract_train_number(user_input)
                 
-            train = advanced_nlp.extract_train_number(user_input)
-            
             if cls:
                 session["data"]["train_class"] = cls
             if train:
@@ -452,6 +457,10 @@ class FlowManager:
                 session["data"]["user_bookings"] = []
             session["data"]["user_bookings"].append(booking_obj)
             session["data"]["last_booked_pnr"] = pnr
+            
+            # Clear transient booking slots so subsequent bookings in the same session start fresh
+            session["data"].pop("train_class", None)
+            session["data"].pop("train_number", None)
             
             return f"Excellent! Your booking has been confirmed successfully. You have booked a {train_class} class ticket on {train_display}. Your generated PNR number is {pnr}. This booking has been saved to your account. Is there anything else I can help you with?"
         
