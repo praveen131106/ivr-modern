@@ -264,19 +264,52 @@ class AdvancedNLP:
         return None
     
     def extract_train_number(self, user_input: str) -> Optional[str]:
-        """Extract train number from input"""
+        """Extract train number or mapped train name from natural speech input"""
+        if not user_input:
+            return None
+            
+        user_input_lower = user_input.lower().strip()
+        
+        # 1. Check for 5-digit or 4-6 digit train numbers
         numbers = re.findall(r'\b\d{5}\b', user_input)
         if numbers:
             return numbers[0]
-        
+            
         numbers = re.findall(r'\b\d{4,6}\b', user_input)
         if numbers:
             return numbers[0]
+            
+        # 2. Check for train names (Godavari, Secunderabad, Shatabdi, Rajdhani, Charminar, Duronto, Vande Bharat, etc.)
+        train_name_map = {
+            "godavari": "12718",
+            "secunderabad": "17018",
+            "shatabdi": "12009",
+            "rajdhani": "12345",
+            "charminar": "12760",
+            "duronto": "12285",
+            "garib rath": "12739",
+            "vande bharat": "20701",
+            "gautami": "12737",
+            "falaknuma": "12703",
+            "konark": "11019",
+            "coromandel": "12841"
+        }
         
+        for name, num in train_name_map.items():
+            if name in user_input_lower:
+                return num
+                
+        # 3. Fallback: If user provides any spoken train name (e.g. "Visakha Express"), return formatted train name
+        if len(user_input_lower) >= 3:
+            return user_input.strip().title()
+            
         return None
     
     def extract_pnr(self, user_input: str) -> Optional[str]:
         """Extract PNR number from input"""
+        if not user_input:
+            return None
+            
         numbers = re.findall(r'\b\d{10}\b', user_input)
         if numbers:
             return numbers[0]
@@ -285,6 +318,10 @@ class AdvancedNLP:
             numbers = re.findall(r'\d+', user_input)
             if numbers:
                 return numbers[0]
+                
+        # Fallback to returning trimmed input
+        if len(user_input.strip()) >= 3:
+            return user_input.strip()
         
         return None
     
