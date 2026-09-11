@@ -1,6 +1,6 @@
 /**
  * Train IVR System - Frontend JavaScript Controller
- * Instant Session-Independent Voice Control (STT & TTS), Auto-Call Start, Keypad & Direct Typing.
+ * Barge-in Speech Interruption, Hands-Free Voice Control (STT & TTS), Direct Typing & Gemini AI status.
  * Author: Praveen (Conversational IVR Modernization Framework)
  */
 
@@ -132,6 +132,14 @@ function initSpeechRecognition() {
         const transcript = event.results[lastResultIndex][0].transcript.trim();
         if (transcript) {
             console.log("Speech recognized:", transcript);
+
+            // BARGE-IN: Instantly cut off assistant voice playback when user speaks
+            if ("speechSynthesis" in window && isSpeaking) {
+                console.log("Assistant voice interrupted by user barge-in speech.");
+                window.speechSynthesis.cancel();
+                isSpeaking = false;
+            }
+
             if (userTextInput) userTextInput.value = transcript;
 
             // Auto-start call session if not already active
@@ -160,8 +168,8 @@ function initSpeechRecognition() {
 
     recognition.onend = () => {
         isListening = false;
-        // Auto-resume continuous listening whenever mic permission is granted and TTS is not speaking
-        if (!isSpeaking && micPermissionGranted) {
+        // Auto-resume continuous listening whenever mic permission is granted
+        if (micPermissionGranted) {
             setTimeout(() => startContinuousListening(), 300);
         } else {
             if (micStatus) {
@@ -175,8 +183,6 @@ function initSpeechRecognition() {
 }
 
 function startContinuousListening() {
-    if (isSpeaking) return;
-
     if (!recognition) {
         recognition = initSpeechRecognition();
         if (!recognition) return;
@@ -204,8 +210,6 @@ function stopContinuousListening() {
 function speakText(text) {
     if (!("speechSynthesis" in window)) return;
     
-    stopContinuousListening();
-    
     if ("speechSynthesis" in window) {
         window.speechSynthesis.cancel();
     }
@@ -216,16 +220,8 @@ function speakText(text) {
     utterance.pitch = 1.0;
 
     utterance.onstart = () => { isSpeaking = true; };
-    
-    utterance.onend = () => {
-        isSpeaking = false;
-        setTimeout(() => startContinuousListening(), 400);
-    };
-
-    utterance.onerror = () => {
-        isSpeaking = false;
-        setTimeout(() => startContinuousListening(), 400);
-    };
+    utterance.onend = () => { isSpeaking = false; };
+    utterance.onerror = () => { isSpeaking = false; };
 
     window.speechSynthesis.speak(utterance);
 }
@@ -274,7 +270,6 @@ async function startCall() {
     try {
         if (callStatus) callStatus.textContent = "Connecting...";
 
-        // Trigger microphone permission popup if not already granted
         const micOk = await requestMicPermission();
 
         const response = await fetch(`${API_BASE_URL}/api/ivr/start`, {
@@ -318,7 +313,6 @@ async function sendInput(inputVal) {
         await startCall();
     }
 
-    stopContinuousListening();
     try {
         const response = await fetch(`${API_BASE_URL}/api/ivr/input`, {
             method: "POST",
@@ -403,17 +397,15 @@ document.addEventListener("DOMContentLoaded", () => {
     checkEngineHealth();
     initSpeechRecognition();
 
-    // Enable text input and send button immediately for effortless typing
     if (userTextInput) userTextInput.disabled = false;
     if (sendBtn) sendBtn.disabled = false;
 
-    // Attempt starting mic listening immediately on page load / first user click
     requestMicPermission().then((ok) => {
         if (ok) startContinuousListening();
     });
 
     document.addEventListener("click", () => {
-        if (!isListening && micPermissionGranted && !isSpeaking) {
+        if (!isListening && micPermissionGranted) {
             startContinuousListening();
         }
     }, { once: false });
@@ -437,6 +429,10 @@ document.addEventListener("DOMContentLoaded", () => {
             e.preventDefault();
             const text = userTextInput ? userTextInput.value.trim() : "";
             if (text) {
+                if ("speechSynthesis" in window && isSpeaking) {
+                    window.speechSynthesis.cancel();
+                    isSpeaking = false;
+                }
                 addToOutput(text, "user");
                 await sendInput(text);
                 userTextInput.value = "";
@@ -462,6 +458,10 @@ document.addEventListener("DOMContentLoaded", () => {
         key.addEventListener("click", async () => {
             const keyValue = key.getAttribute("data-key");
             if (keyValue) {
+                if ("speechSynthesis" in window && isSpeaking) {
+                    window.speechSynthesis.cancel();
+                    isSpeaking = false;
+                }
                 addToOutput(`Key pressed: ${keyValue}`, "user");
                 await sendInput(keyValue);
             }
@@ -473,6 +473,10 @@ document.addEventListener("DOMContentLoaded", () => {
         pill.addEventListener("click", async () => {
             const trainNum = pill.getAttribute("data-train");
             if (trainNum) {
+                if ("speechSynthesis" in window && isSpeaking) {
+                    window.speechSynthesis.cancel();
+                    isSpeaking = false;
+                }
                 addToOutput(`Selected train ${trainNum}`, "user");
                 await sendInput(trainNum);
             }
@@ -484,6 +488,10 @@ document.addEventListener("DOMContentLoaded", () => {
         chip.addEventListener("click", async () => {
             const text = chip.getAttribute("data-input");
             if (text) {
+                if ("speechSynthesis" in window && isSpeaking) {
+                    window.speechSynthesis.cancel();
+                    isSpeaking = false;
+                }
                 addToOutput(text, "user");
                 await sendInput(text);
             }
@@ -496,6 +504,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const allowedKeys = "0123456789*#";
         if (allowedKeys.includes(e.key)) {
+            if ("speechSynthesis" in window && isSpeaking) {
+                window.speechSynthesis.cancel();
+                isSpeaking = false;
+            }
             addToOutput(`Key pressed: ${e.key}`, "user");
             await sendInput(e.key);
         }

@@ -361,15 +361,59 @@ class FlowManager:
         elif function_name == "booking_confirmation":
             import random
             train_class = data.get("train_class", "Sleeper")
-            train_number = data.get("train_number", "12718")
-            pnr = random.randint(1000000000, 9999999999)
-            return f"Excellent! Your booking has been confirmed successfully. You have booked a {train_class} class ticket on Train {train_number}. Your PNR number is {pnr}. Please save this PNR for future reference. Your ticket details will be sent to your registered mobile number. Is there anything else I can help you with?"
+            train_input = data.get("train_number", user_input if user_input else "12718")
+            
+            train_names = {
+                "12718": "12718 Godavari Express",
+                "17018": "17018 Secunderabad Express",
+                "12009": "12009 Shatabdi Express",
+                "12345": "12345 Rajdhani Express",
+                "godavari": "12718 Godavari Express",
+                "secunderabad": "17018 Secunderabad Express",
+                "shatabdi": "12009 Shatabdi Express",
+                "rajdhani": "12345 Rajdhani Express"
+            }
+            train_display = train_names.get(train_input.lower(), f"Train {train_input}")
+            pnr = str(random.randint(1000000000, 9999999999))
+            
+            booking_obj = {
+                "pnr": pnr,
+                "train_display": train_display,
+                "train_class": train_class,
+                "status": "CONFIRMED",
+                "fare": random.randint(450, 1850)
+            }
+            if "user_bookings" not in session["data"]:
+                session["data"]["user_bookings"] = []
+            session["data"]["user_bookings"].append(booking_obj)
+            session["data"]["last_booked_pnr"] = pnr
+            
+            return f"Excellent! Your booking has been confirmed successfully. You have booked a {train_class} class ticket on {train_display}. Your generated PNR number is {pnr}. This booking has been saved to your account. Is there anything else I can help you with?"
         
         elif function_name == "cancellation_confirmation":
             import random
-            pnr = data.get("pnr", user_input)
-            refund_amt = random.randint(500, 2000)
-            return f"I've successfully cancelled your ticket with PNR {pnr}. Your refund of ₹{refund_amt} will be processed and credited back to your original payment method within 5 to 7 business days. A cancellation confirmation SMS will be sent to your registered mobile number. Thank you for using our service, and I'm sorry we couldn't accommodate your travel plans this time."
+            user_bookings = session.get("data", {}).get("user_bookings", [])
+            active_bookings = [b for b in user_bookings if b.get("status") == "CONFIRMED"]
+            
+            pnr_input = data.get("pnr", user_input)
+            matched_booking = None
+            
+            for b in active_bookings:
+                if b["pnr"] in user_input or pnr_input in b["pnr"] or b["train_display"].lower() in user_input.lower():
+                    matched_booking = b
+                    break
+            
+            if not matched_booking and active_bookings:
+                matched_booking = active_bookings[-1]
+            
+            if matched_booking:
+                matched_booking["status"] = "CANCELLED"
+                refund_amt = matched_booking.get("fare", random.randint(500, 1500))
+                return f"I have successfully cancelled your booking for {matched_booking['train_display']} with PNR {matched_booking['pnr']}. Your full refund of ₹{refund_amt} has been initiated back to your original payment method. Thank you for using our train enquiry system!"
+            else:
+                refund_amt = random.randint(500, 1500)
+                pnr_display = pnr_input if pnr_input else "1000000000"
+                return f"I've successfully cancelled your ticket with PNR {pnr_display}. Your refund of ₹{refund_amt} will be processed within 3-5 business days. Is there anything else I can assist you with?"
         
         elif function_name == "connect_agent":
             return "I'm connecting you to one of our customer support agents. Please hold for just a moment, and someone will be with you shortly."
