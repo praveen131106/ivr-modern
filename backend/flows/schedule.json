@@ -1,0 +1,27 @@
+{
+  "name": "Train Schedule Enquiry",
+  "description": "Flow for checking train schedules",
+  "initial_state": "collect_train_number",
+  "states": {
+    "collect_train_number": {
+      "message": "I'll get the schedule information for you. Please enter or tell me the train number.",
+      "actions": {
+        "collect_data": {
+          "field": "train_number",
+          "next_state": "show_schedule"
+        }
+      }
+    },
+    "show_schedule": {
+      "message": "",
+      "actions": {
+        "dynamic_response": {
+          "function": "train_schedule",
+          "next_state": "main_menu"
+        }
+      },
+      "is_end": false
+    }
+  }
+}
+

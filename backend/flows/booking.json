@@ -1,0 +1,59 @@
+{
+  "name": "Train Ticket Booking",
+  "description": "Flow for booking train tickets",
+  "initial_state": "select_class",
+  "states": {
+    "select_class": {
+      "message": "Great! I'd be happy to help you book a train ticket. First, which class would you like? Press 1 for Sleeper, Press 2 for AC 3 Tier, or Press 3 for Tatkal. You can also just say the class name.",
+      "options": {
+        "1": "Sleeper",
+        "2": "AC",
+        "3": "Tatkal"
+      },
+      "keypad_map": {
+        "1": "collect_train_number",
+        "2": "collect_train_number",
+        "3": "collect_train_number"
+      },
+      "speech_patterns": {
+        "sleeper": "collect_train_number",
+        "ac": "collect_train_number",
+        "tatkal": "collect_train_number",
+        "one": "collect_train_number",
+        "two": "collect_train_number",
+        "three": "collect_train_number"
+      },
+      "transitions": {
+        "1": "collect_train_number",
+        "2": "collect_train_number",
+        "3": "collect_train_number"
+      },
+      "actions": {
+        "collect_data": {
+          "field": "train_class",
+          "next_state": "collect_train_number"
+        }
+      }
+    },
+    "collect_train_number": {
+      "message": "Perfect! Now, please enter or tell me the train number you'd like to book.",
+      "actions": {
+        "collect_data": {
+          "field": "train_number",
+          "next_state": "confirm_booking"
+        }
+      }
+    },
+    "confirm_booking": {
+      "message": "",
+      "actions": {
+        "dynamic_response": {
+          "function": "booking_confirmation",
+          "next_state": "main_menu"
+        }
+      },
+      "is_end": false
+    }
+  }
+}
+

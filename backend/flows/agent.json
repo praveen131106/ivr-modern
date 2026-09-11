@@ -1,0 +1,22 @@
+{
+  "name": "Customer Support Agent",
+  "description": "Flow for connecting to live agent",
+  "initial_state": "connecting",
+  "states": {
+    "connecting": {
+      "message": "I'm connecting you to one of our customer support agents right now. Please hold for just a moment.",
+      "actions": {
+        "dynamic_response": {
+          "function": "connect_agent",
+          "next_state": "connected"
+        }
+      },
+      "is_end": true
+    },
+    "connected": {
+      "message": "You are now connected to a customer support agent.",
+      "is_end": true
+    }
+  }
+}
+

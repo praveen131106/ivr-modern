@@ -1,0 +1,27 @@
+{
+  "name": "Ticket Cancellation",
+  "description": "Flow for cancelling train tickets",
+  "initial_state": "collect_pnr",
+  "states": {
+    "collect_pnr": {
+      "message": "I can help you cancel your ticket. Please enter or tell me your 10-digit PNR number.",
+      "actions": {
+        "collect_data": {
+          "field": "pnr",
+          "next_state": "confirm_cancellation"
+        }
+      }
+    },
+    "confirm_cancellation": {
+      "message": "",
+      "actions": {
+        "dynamic_response": {
+          "function": "cancellation_confirmation",
+          "next_state": "main_menu"
+        }
+      },
+      "is_end": false
+    }
+  }
+}
+

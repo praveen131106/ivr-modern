@@ -1,0 +1,51 @@
+{
+  "name": "Fare Enquiry",
+  "description": "Flow for checking train fares",
+  "initial_state": "collect_fare_info",
+  "states": {
+    "collect_fare_info": {
+      "message": "I'd be happy to help you with fare information. To get started, please enter or tell me the train number you'd like to check the fare for.",
+      "actions": {
+        "collect_data": {
+          "field": "train_number",
+          "next_state": "collect_stations"
+        }
+      }
+    },
+    "collect_stations": {
+      "message": "Great! Now, please tell me your boarding station and destination station. You can say the station names or enter the station codes.",
+      "actions": {
+        "collect_data": {
+          "field": "stations",
+          "next_state": "select_class_fare"
+        }
+      }
+    },
+    "select_class_fare": {
+      "message": "Perfect! Now, which class would you like fare information for? Press 1 for Sleeper, Press 2 for AC 3 Tier, Press 3 for AC 2 Tier, or Press 4 for First AC. You can also say the class name.",
+      "keypad_map": {
+        "1": "show_fare",
+        "2": "show_fare",
+        "3": "show_fare",
+        "4": "show_fare"
+      },
+      "actions": {
+        "collect_data": {
+          "field": "class",
+          "next_state": "show_fare"
+        }
+      }
+    },
+    "show_fare": {
+      "message": "",
+      "actions": {
+        "dynamic_response": {
+          "function": "fare_response",
+          "next_state": "main_menu"
+        }
+      },
+      "is_end": false
+    }
+  }
+}
+
