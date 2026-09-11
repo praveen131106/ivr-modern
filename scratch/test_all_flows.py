@@ -45,7 +45,7 @@ def test_all_flows():
     client.post("/api/ivr/input", json={"session_id": sid, "input": "5"}) # Keypad 5 -> PNR Status
     r = client.post("/api/ivr/input", json={"session_id": sid, "input": "9876543210"})
     msg = r.json()["message"]
-    assert "9876543210" in msg and "booking status" in msg.lower(), f"Unexpected PNR msg: {msg}"
+    assert "9876543210" in msg and ("status" in msg.lower() or "ticket" in msg.lower()), f"Unexpected PNR msg: {msg}"
     print("[PASS] 3. PNR Status Flow PASSED:", msg[:70] + "...")
 
     # 4. Seat Availability Flow

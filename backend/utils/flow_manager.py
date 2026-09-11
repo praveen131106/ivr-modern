@@ -91,7 +91,12 @@ class FlowManager:
         
         # 1. Slot extraction & instant confirmation for booking flow
         if target_flow_name == "booking":
-            cls = advanced_nlp.extract_class_from_speech(user_input)
+            clean_input = user_input.lower().strip()
+            if clean_input in ["1", "book", "booking", "ticket", "book ticket", "book a ticket", "i want to book a ticket"]:
+                cls = None
+            else:
+                cls = advanced_nlp.extract_class_from_speech(user_input)
+                
             train = advanced_nlp.extract_train_number(user_input)
             
             if cls:
@@ -163,6 +168,30 @@ class FlowManager:
             if pnr and pnr.isdigit() and len(pnr) == 10:
                 session["data"]["pnr"] = pnr
                 msg = self._generate_dynamic_response("cancellation_confirmation", session, user_input)
+                session["current_flow"] = "train_main"
+                session["current_state"] = "main_menu"
+                main_flow = self.get_flow("train_main")
+                options = main_flow.get("states", {}).get("main_menu", {}).get("options", {})
+                return ("main_menu", msg, options, False)
+
+        # 6. Slot extraction for seat availability
+        elif target_flow_name == "seat_availability":
+            train = advanced_nlp.extract_train_number(user_input)
+            if train:
+                session["data"]["train_number"] = train
+                msg = self._generate_dynamic_response("seat_availability_response", session, user_input)
+                session["current_flow"] = "train_main"
+                session["current_state"] = "main_menu"
+                main_flow = self.get_flow("train_main")
+                options = main_flow.get("states", {}).get("main_menu", {}).get("options", {})
+                return ("main_menu", msg, options, False)
+
+        # 7. Slot extraction for fare enquiry
+        elif target_flow_name == "fare_enquiry":
+            train = advanced_nlp.extract_train_number(user_input)
+            if train:
+                session["data"]["train_number"] = train
+                msg = self._generate_dynamic_response("fare_response", session, user_input)
                 session["current_flow"] = "train_main"
                 session["current_state"] = "main_menu"
                 main_flow = self.get_flow("train_main")
@@ -355,38 +384,45 @@ class FlowManager:
         session: Dict[str, Any],
         user_input: str
     ) -> str:
-        """Generate dynamic responses based on function name"""
+        """Generate dynamic responses based on function name with complete dataset for core trains"""
         
         data = session.get("data", {})
         
         if function_name == "train_status":
-            import random
-            train_number = data.get("train_number", user_input[-5:] if len(user_input) >= 5 else "12718")
-            # Simulate status with more realistic responses
-            statuses = [
-                ("On Time", "Great news! Train {} is running exactly on schedule."),
-                ("Running 10 minutes late", "I've checked, and Train {} is running approximately 10 minutes behind schedule. Not to worry, this is a minor delay."),
-                ("Running 30 minutes late", "I'm sorry to inform you that Train {} is currently running about 30 minutes late. We apologize for any inconvenience."),
-                ("Delayed by 1 hour", "Unfortunately, Train {} is experiencing a delay of approximately 1 hour. We understand this is frustrating and apologize for the inconvenience.")
-            ]
-            status, message = random.choice(statuses)
-            return message.format(train_number)
+            train_input = str(data.get("train_number", user_input if user_input else "12718")).lower()
+            statuses = {
+                "12718": "Great news! Train 12718 Godavari Express is running exactly on schedule.",
+                "17018": "I've checked, and Train 17018 Secunderabad Express is running approximately 10 minutes behind schedule.",
+                "12009": "Train 12009 Shatabdi Express is currently running 15 minutes late, expected to arrive on schedule at destination.",
+                "12345": "Train 12345 Rajdhani Express is running on time and approaching its next station on schedule.",
+                "godavari": "Great news! Train 12718 Godavari Express is running exactly on schedule.",
+                "secunderabad": "I've checked, and Train 17018 Secunderabad Express is running approximately 10 minutes behind schedule.",
+                "shatabdi": "Train 12009 Shatabdi Express is currently running 15 minutes late.",
+                "rajdhani": "Train 12345 Rajdhani Express is running on time."
+            }
+            return statuses.get(train_input, f"Train {data.get('train_number', '12718')} is currently running on schedule. No major delays reported.")
         
         elif function_name == "train_schedule":
-            train_number = data.get("train_number", user_input[-5:] if len(user_input) >= 5 else "17018")
-            # Simulate schedule with more details
+            train_input = str(data.get("train_number", user_input if user_input else "12718")).lower()
             schedules = {
-                "12718": ("8:45 AM", "5:30 PM", "8 hours 45 minutes"),
-                "17018": ("6:00 AM", "2:15 PM", "8 hours 15 minutes"),
-                "12009": ("7:30 AM", "1:45 PM", "6 hours 15 minutes")
+                "12718": ("8:45 AM", "5:30 PM", "8 hours 45 minutes", "Visakhapatnam", "Hyderabad"),
+                "17018": ("6:00 AM", "2:15 PM", "8 hours 15 minutes", "Secunderabad", "Vijayawada"),
+                "12009": ("7:30 AM", "1:45 PM", "6 hours 15 minutes", "Mumbai Central", "Ahmedabad"),
+                "12345": ("10:00 AM", "6:30 PM", "8 hours 30 minutes", "New Delhi", "Howrah"),
+                "godavari": ("8:45 AM", "5:30 PM", "8 hours 45 minutes", "Visakhapatnam", "Hyderabad"),
+                "secunderabad": ("6:00 AM", "2:15 PM", "8 hours 15 minutes", "Secunderabad", "Vijayawada"),
+                "shatabdi": ("7:30 AM", "1:45 PM", "6 hours 15 minutes", "Mumbai Central", "Ahmedabad"),
+                "rajdhani": ("10:00 AM", "6:30 PM", "8 hours 30 minutes", "New Delhi", "Howrah")
             }
-            times = schedules.get(train_number, ("8:00 AM", "6:00 PM", "10 hours"))
-            return f"Perfect! Train {train_number} departs at {times[0]} and arrives at {times[1]}. The total journey time is {times[2]}. Is there anything else you'd like to know about this train?"
+            if train_input in schedules:
+                dep, arr, dur, src, dst = schedules[train_input]
+                return f"Perfect! Train {data.get('train_number', '12718')} runs between {src} and {dst}. Departs at {dep} and arrives at {arr}. Total journey time is {dur}. Is there anything else you'd like to know?"
+            return f"Train {data.get('train_number', '12718')} departs at 8:00 AM and arrives at 5:00 PM (journey duration: 9 hours). Is there anything else I can assist you with?"
         
         elif function_name == "booking_confirmation":
             import random
             train_class = data.get("train_class", "Sleeper")
-            train_input = data.get("train_number", user_input if user_input else "12718")
+            train_input = str(data.get("train_number", user_input if user_input else "12718")).lower()
             
             train_names = {
                 "12718": "12718 Godavari Express",
@@ -394,11 +430,15 @@ class FlowManager:
                 "12009": "12009 Shatabdi Express",
                 "12345": "12345 Rajdhani Express",
                 "godavari": "12718 Godavari Express",
+                "godavari express": "12718 Godavari Express",
                 "secunderabad": "17018 Secunderabad Express",
+                "secunderabad express": "17018 Secunderabad Express",
                 "shatabdi": "12009 Shatabdi Express",
-                "rajdhani": "12345 Rajdhani Express"
+                "shatabdi express": "12009 Shatabdi Express",
+                "rajdhani": "12345 Rajdhani Express",
+                "rajdhani express": "12345 Rajdhani Express"
             }
-            train_display = train_names.get(train_input.lower(), f"Train {train_input}")
+            train_display = train_names.get(train_input, f"Train {data.get('train_number', '12718')}")
             pnr = str(random.randint(1000000000, 9999999999))
             
             booking_obj = {
@@ -446,55 +486,47 @@ class FlowManager:
         elif function_name == "pnr_status_response":
             import random
             pnr = data.get("pnr", user_input)
-            statuses = [
-                "Confirmed",
-                "Waiting List (WL)",
-                "Reservation Against Cancellation (RAC)",
-                "Cancelled"
-            ]
+            statuses = ["Confirmed", "Waiting List (WL-3)", "Reservation Against Cancellation (RAC-5)"]
             status = random.choice(statuses)
-            berth_info = random.choice(["Lower Berth", "Middle Berth", "Upper Berth", "Side Lower", "Side Upper"])
-            coach = f"S{random.randint(1,15)}" if "Sleeper" in str(data.get("class", "")) else f"A{random.randint(1,10)}"
-            return f"Thank you for your PNR {pnr}. I've checked your booking status. Your ticket is {status}. You have been assigned {berth_info} in Coach {coach}. Is there anything else I can help you with?"
+            berth_info = random.choice(["Lower Berth", "Middle Berth", "Upper Berth", "Side Lower"])
+            coach = f"S{random.randint(1,10)}" if "Sleeper" in str(data.get("class", "")) else f"B{random.randint(1,8)}"
+            return f"Thank you for your PNR {pnr}. Your ticket status is {status}. Assigned: {berth_info}, Coach {coach}. Is there anything else I can help you with?"
         
         elif function_name == "seat_availability_response":
-            import random
             train_number = data.get("train_number", "12718")
             train_class = data.get("class", "Sleeper")
             travel_date = data.get("travel_date", "Tomorrow")
-            available = random.randint(5, 50)
-            waiting = random.randint(0, 20)
-            return f"Great! I've checked seat availability for Train {train_number} on {travel_date} in {train_class} class. There are {available} seats currently available, and {waiting} on the waiting list. Would you like to proceed with booking, or check another date?"
+            
+            seats_db = {
+                "12718": {"Sleeper": "45 seats available", "AC": "18 seats available", "Tatkal": "8 seats available"},
+                "17018": {"Sleeper": "28 seats available", "AC": "14 seats available", "Tatkal": "5 seats available"},
+                "12009": {"Sleeper": "Not Applicable", "AC": "32 seats available", "Tatkal": "12 seats available"},
+                "12345": {"Sleeper": "Not Applicable", "AC": "22 seats available", "Tatkal": "6 seats available"}
+            }
+            train_seats = seats_db.get(str(train_number), {"Sleeper": "30 seats available", "AC": "15 seats available", "Tatkal": "5 seats available"})
+            availability = train_seats.get(train_class, "25 seats available")
+            return f"Great! I've checked seat availability for Train {train_number} on {travel_date} in {train_class} class: {availability}. Would you like to proceed with booking?"
         
         elif function_name == "fare_response":
-            import random
             train_number = data.get("train_number", "12718")
             train_class = data.get("class", "Sleeper")
-            base_fares = {
-                "Sleeper": random.randint(300, 800),
-                "AC 3 Tier": random.randint(800, 1500),
-                "AC 2 Tier": random.randint(1500, 2500),
-                "First AC": random.randint(3000, 5000)
+            
+            fares_db = {
+                "12718": {"Sleeper": "₹480", "AC": "₹1,250", "Tatkal": "₹1,450"},
+                "17018": {"Sleeper": "₹420", "AC": "₹1,180", "Tatkal": "₹1,380"},
+                "12009": {"Sleeper": "₹550", "AC": "₹1,450", "Tatkal": "₹1,650"},
+                "12345": {"Sleeper": "₹750", "AC": "₹2,100", "Tatkal": "₹2,450"}
             }
-            fare = base_fares.get(train_class, 500)
-            return f"Thank you! The fare for Train {train_number} in {train_class} class between your selected stations is ₹{fare}. This includes base fare and reservation charges. Would you like to proceed with booking, or check another class?"
+            train_fares = fares_db.get(str(train_number), {"Sleeper": "₹500", "AC": "₹1,300", "Tatkal": "₹1,500"})
+            fare = train_fares.get(train_class, "₹650")
+            return f"The total fare for Train {train_number} in {train_class} class is {fare}. This includes reservation charges. Would you like to book now?"
         
         elif function_name == "trains_between_stations_response":
-            import random
-            source = data.get("source_station", "Source")
-            destination = data.get("destination_station", "Destination")
-            trains = [
-                ("12718", "Express", "8:45 AM", "5:30 PM", "8h 45m"),
-                ("17018", "Superfast", "6:00 AM", "2:15 PM", "8h 15m"),
-                ("12009", "Shatabdi", "7:30 AM", "1:45 PM", "6h 15m"),
-                ("12345", "Rajdhani", "10:00 AM", "6:30 PM", "8h 30m")
-            ]
-            selected_trains = random.sample(trains, min(3, len(trains)))
-            response = f"I found {len(selected_trains)} trains running between {source} and {destination}. "
-            for i, (num, name, dep, arr, dur) in enumerate(selected_trains, 1):
-                response += f"Train {num} {name} departs at {dep} and arrives at {arr}, journey time {dur}. "
-            response += "Would you like more details about any specific train?"
-            return response
+            source = data.get("source_station", "Hyderabad")
+            destination = data.get("destination_station", "Visakhapatnam")
+            return f"I found 4 daily trains between {source} and {destination}: 1) 12718 Godavari Express (8:45 AM), 2) 17018 Secunderabad Express (6:00 AM), 3) 12009 Shatabdi Express (7:30 AM), 4) 12345 Rajdhani Express (10:00 AM). Which train would you like to book or check details for?"
+        
+        return "I'm processing your request. Please give me a moment..."
         
         return "I'm processing your request. Please give me a moment..."
     
