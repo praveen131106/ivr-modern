@@ -1,64 +1,60 @@
-# 🚀 Deployment Guide
+# 🚀 Deployment Guide (Vercel Full-Stack, Netlify & Docker)
 
-## Quick Start
+## ⚡ Option 1: Vercel Full-Stack Deployment (Recommended)
+
+Both the **FastAPI Python Backend** and **Interactive Web Frontend** are pre-configured to deploy together on Vercel under a single domain.
+
+### 🔹 Deployment via Vercel CLI
+```bash
+npx vercel
+```
+Follow the interactive prompts to link and deploy your project instantly.
+
+### 🔹 Deployment via GitHub Integration
+1. Log in to [Vercel Dashboard](https://vercel.com/dashboard).
+2. Click **Add New** → **Project** → Select `praveen131106/ivr-modern`.
+3. Keep default settings (Vercel will detect `vercel.json` and `api/index.py`).
+4. *(Optional)* Under **Environment Variables**, add:
+   - `GEMINI_API_KEY`: `your_gemini_api_key`
+5. Click **Deploy**. Both the API (`/api/*`, `/health`) and web UI (`/`) will be live on a single `*.vercel.app` URL!
+
+---
+
+## ⚡ Option 2: Local Development Setup
 
 1. **Install Dependencies:**
    ```bash
    pip install -r requirements.txt
    ```
 
-2. **Start Backend:**
+2. **Start Backend Server:**
    ```bash
    # Windows
    start_backend.bat
-   
+
    # Linux/Mac
    ./start_backend.sh
    ```
 
-3. **Open Frontend:**
-   - Open `frontend/index.html` in browser
-   - Or use: `python -m http.server 8080` in frontend folder
+3. **Open Web Frontend:**
+   - Double-click `open_frontend.bat` or open `frontend/index.html` in your browser.
 
-## Production Deployment
+---
 
-### Backend Deployment
+## ⚡ Option 3: Docker Deployment (Backend API)
 
-**Option 1: Using Uvicorn**
 ```bash
-uvicorn backend.main:app --host 0.0.0.0 --port 8000
+docker build -t ivr-backend .
+docker run -p 8000:8000 -e GEMINI_API_KEY="your_api_key" ivr-backend
 ```
 
-**Option 2: Using Gunicorn**
-```bash
-pip install gunicorn
-gunicorn backend.main:app -w 4 -k uvicorn.workers.UvicornWorker
-```
+---
 
-### Frontend Deployment
+## ⚙️ Environment Variables
 
-**Option 1: Static Hosting**
-- Upload `frontend/` folder to any static hosting (GitHub Pages, Netlify, Vercel)
-- Update `API_BASE_URL` in `script.js` to production backend URL
-
-**Option 2: Serve with Backend**
-- Add static file serving in FastAPI
-- Serve from same domain
-
-## Environment Variables
-
-Create `.env` file:
-```
-API_PORT=8000
+Copy `.env.example` to `.env`:
+```ini
+GEMINI_API_KEY=your_gemini_api_key_here
+PORT=8000
 LOG_LEVEL=INFO
-CORS_ORIGINS=http://localhost:8080,https://yourdomain.com
 ```
-
-## Security Considerations
-
-- Enable HTTPS for production
-- Add authentication if needed
-- Implement rate limiting
-- Validate all inputs
-- Sanitize user data
-

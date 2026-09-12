@@ -42,31 +42,32 @@ This project **modernizes legacy IVR architectures** by introducing:
 
 ---
 
-## 🚀 Deployment Guide (Netlify & Vercel)
+## 🚀 Deployment Guide (Vercel, Netlify & Docker)
 
-### 🔹 Option 1: Frontend Deployment on Netlify
+### 🔹 Option 1: Full-Stack Deployment on Vercel (Backend + Frontend)
+Both the FastAPI backend and HTML/JS frontend are pre-configured to deploy together on Vercel using `vercel.json` and `api/index.py`.
+
+1. Install Vercel CLI and run:
+   ```bash
+   npx vercel
+   ```
+2. Or connect your GitHub repository `praveen131106/ivr-modern` on [Vercel Dashboard](https://vercel.com/).
+3. Vercel automatically deploys:
+   - Serverless Python API at `/api/*` and `/health`
+   - Static Web Simulator at `/`
+
+---
+
+### 🔹 Option 2: Frontend Deployment on Netlify
 The repository includes a pre-configured `netlify.toml`.
 
 1. Log in to [Netlify](https://app.netlify.com/).
-2. Click **Add new site** → **Import an existing project** → Connect to your GitHub repository `ivr-modern`.
-3. Set **Publish directory** to `frontend`.
-4. Click **Deploy site**. Your web simulator will be live instantly!
+2. Click **Add new site** → **Import an existing project** → Connect `praveen131106/ivr-modern`.
+3. Set **Publish directory** to `frontend` and click **Deploy**.
 
 ---
 
-### 🔹 Option 2: Frontend Deployment on Vercel
-The repository includes a pre-configured `vercel.json`.
-
-1. Log in to [Vercel](https://vercel.com/).
-2. Click **Add New** → **Project** → Select `praveen131106/ivr-modern`.
-3. Set **Output Directory** to `frontend`.
-4. Click **Deploy**.
-
----
-
-### 🔹 Option 3: Backend API Deployment
-The FastAPI backend can be deployed on any Python host (e.g. Railway, Render, Fly.io, or AWS EC2):
-
+### 🔹 Option 3: Backend API Container Deployment
 Using Docker:
 ```bash
 docker build -t ivr-backend .

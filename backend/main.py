@@ -249,7 +249,12 @@ async def end_ivr(request: IVREndRequest):
 
     try:
         logs_dir = os.path.join(BASE_DIR, "logs")
-        os.makedirs(logs_dir, exist_ok=True)
+        try:
+            os.makedirs(logs_dir, exist_ok=True)
+        except OSError:
+            logs_dir = os.path.join("/tmp", "logs")
+            os.makedirs(logs_dir, exist_ok=True)
+
         log_file = os.path.join(logs_dir, f"call_{request.session_id}.json")
         with open(log_file, "w") as f:
             json.dump(summary, f, indent=2)
