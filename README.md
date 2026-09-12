@@ -1,11 +1,20 @@
 # 🚂 Conversational IVR Modernization — Train Enquiry System
 
+[![Vercel Live Demo](https://img.shields.io/badge/Vercel-Live%20Demo-000000.svg?logo=vercel&logoColor=white)](https://ivr-modern.vercel.app/)
 [![Python 3.9+](https://img.shields.io/badge/Python-3.9%2B-blue.svg)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.100%2B-009688.svg)](https://fastapi.tiangolo.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
 [![Tests: Passing](https://img.shields.io/badge/Tests-10%2F10%20Passed-success.svg)](#-testing)
 
 A complete, production-ready **Conversational IVR Modernization Framework** designed to transform traditional DTMF (keypad-only) telephony IVR systems into an AI-driven, speech-enabled conversational assistant for train enquiry and passenger support services.
+
+---
+
+## 🌐 Live Application & API
+
+- 🚀 **Live Web Simulator**: [https://ivr-modern.vercel.app/](https://ivr-modern.vercel.app/)
+- 🟢 **Backend Health Endpoint**: [https://ivr-modern.vercel.app/health](https://ivr-modern.vercel.app/health)
+- 📊 **Flows API Endpoint**: [https://ivr-modern.vercel.app/api/flows](https://ivr-modern.vercel.app/api/flows)
 
 ---
 
@@ -37,24 +46,18 @@ This project **modernizes legacy IVR architectures** by introducing:
   - 💰 Fare Calculation Enquiry
   - 🚉 Trains Between Stations Search
   - 🎧 Customer Support Agent Handoff
-- 📊 **Session & Call Logging**: In-memory session handling with persistent JSON call transcript generation (`backend/logs/`).
+- 📊 **Session & Call Logging**: In-memory session handling with persistent JSON call transcript generation (`backend/logs/` or `/tmp/logs`).
 - 🧪 **100% Verified Test Suite**: Automated Pytest unit test coverage for FastAPI endpoints, health checks, and state transitions.
 
 ---
 
 ## 🚀 Deployment Guide (Vercel, Netlify & Docker)
 
-### 🔹 Option 1: Full-Stack Deployment on Vercel (Backend + Frontend)
-Both the FastAPI backend and HTML/JS frontend are pre-configured to deploy together on Vercel using `vercel.json` and `api/index.py`.
+### 🔹 Option 1: Full-Stack Deployment on Vercel (Live)
+Both the FastAPI backend and HTML/JS frontend are deployed together on Vercel using `vercel.json` and `api/index.py`.
 
-1. Install Vercel CLI and run:
-   ```bash
-   npx vercel
-   ```
-2. Or connect your GitHub repository `praveen131106/ivr-modern` on [Vercel Dashboard](https://vercel.com/).
-3. Vercel automatically deploys:
-   - Serverless Python API at `/api/*` and `/health`
-   - Static Web Simulator at `/`
+- **Live Site**: [https://ivr-modern.vercel.app/](https://ivr-modern.vercel.app/)
+- **Vercel Build Stack**: `@vercel/python` (FastAPI Serverless API) + `@vercel/static` (Web UI).
 
 ---
 
@@ -110,3 +113,4 @@ This project is open-source under the [MIT License](LICENSE.md).
 **Praveen**
 - GitHub: [@praveen131106](https://github.com/praveen131106)
 - Repository: [ivr-modern](https://github.com/praveen131106/ivr-modern)
+- Live Deployment: [https://ivr-modern.vercel.app/](https://ivr-modern.vercel.app/)

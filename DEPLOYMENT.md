@@ -1,8 +1,14 @@
 # 🚀 Deployment Guide (Vercel Full-Stack, Netlify & Docker)
 
-## ⚡ Option 1: Vercel Full-Stack Deployment (Recommended)
+## 🌐 Live Application
+- **Vercel Web App**: [https://ivr-modern.vercel.app/](https://ivr-modern.vercel.app/)
+- **Health Check API**: [https://ivr-modern.vercel.app/health](https://ivr-modern.vercel.app/health)
 
-Both the **FastAPI Python Backend** and **Interactive Web Frontend** are pre-configured to deploy together on Vercel under a single domain.
+---
+
+## ⚡ Option 1: Vercel Full-Stack Deployment (Active)
+
+Both the **FastAPI Python Backend** and **Interactive Web Frontend** are pre-configured to deploy together on Vercel under a single domain (`ivr-modern.vercel.app`).
 
 ### 🔹 Deployment via Vercel CLI
 ```bash
@@ -14,9 +20,9 @@ Follow the interactive prompts to link and deploy your project instantly.
 1. Log in to [Vercel Dashboard](https://vercel.com/dashboard).
 2. Click **Add New** → **Project** → Select `praveen131106/ivr-modern`.
 3. Keep default settings (Vercel will detect `vercel.json` and `api/index.py`).
-4. *(Optional)* Under **Environment Variables**, add:
+4. Under **Environment Variables**, add:
    - `GEMINI_API_KEY`: `your_gemini_api_key`
-5. Click **Deploy**. Both the API (`/api/*`, `/health`) and web UI (`/`) will be live on a single `*.vercel.app` URL!
+5. Click **Deploy**. Both the API (`/api/*`, `/health`) and web UI (`/`) are live on [https://ivr-modern.vercel.app/](https://ivr-modern.vercel.app/)!
 
 ---
 
